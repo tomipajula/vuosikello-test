@@ -25,13 +25,41 @@ import { styles } from "./styles";
 
 // Määritellään kategorioiden värit globaalisti
 const categoryColors = {
-  "Markkinointi": "#7FB3D5",
-  "Talous": "#F9E79F",
-  "Henkilöstöhallinto": "#A3E4D7",
-  "Yhteiset tapahtumat": "#D7BDE2"
+  "Markkinointi": "#1f77b4", // tummansininen - värisokeusystävällinen
+  "Talous": "#ff7f0e", // oranssi - värisokeusystävällinen
+  "Henkilöstöhallinto": "#2ca02c", // vihreä - värisokeusystävällinen
+  "Yhteiset tapahtumat": "#d62728" // punainen - värisokeusystävällinen
 };
 
+// Muutetaan categoryColors objektista tilaksi, jotta sitä voidaan päivittää
 const Vuosikello = () => {
+  // Määritellään väripaletti uusille kategorioille - värisokeusystävällinen
+  const colorPalette = [
+    "#1f77b4", // tummansininen
+    "#ff7f0e", // oranssi
+    "#2ca02c", // vihreä
+    "#d62728", // punainen
+    "#9467bd", // violetti
+    "#8c564b", // ruskea
+    "#e377c2", // pinkki
+    "#7f7f7f", // harmaa
+    "#bcbd22", // oliivinvihreä
+    "#17becf", // syaani
+    "#aec7e8", // vaaleansininen
+    "#ffbb78", // vaaleanoranssi
+    "#98df8a", // vaaleanvihreä
+    "#ff9896", // vaaleanpunainen
+    "#c5b0d5"  // vaaleanvioletti
+  ];
+
+  // Kategorioiden värit tilana - käytetään värisokeusystävällisiä värejä
+  const [categoryColors, setCategoryColors] = useState({
+    "Markkinointi": "#1f77b4", // tummansininen - värisokeusystävällinen
+    "Talous": "#ff7f0e", // oranssi - värisokeusystävällinen
+    "Henkilöstöhallinto": "#2ca02c", // vihreä - värisokeusystävällinen
+    "Yhteiset tapahtumat": "#d62728" // punainen - värisokeusystävällinen
+  });
+
   // Tapahtumat
   const [events, setEvents] = useState([
     {
@@ -107,12 +135,32 @@ const Vuosikello = () => {
     "Yhteiset tapahtumat"
   ]);
 
+  // Päivitetään kategorioiden hallintaa
+  const updateCategories = (newCategories) => {
+    // Tarkistetaan, onko uusia kategorioita
+    const newCategoryColors = {...categoryColors};
+    let colorIndex = Object.keys(categoryColors).length;
+    
+    newCategories.forEach(category => {
+      if (!newCategoryColors[category]) {
+        // Määritellään uusi väri kategorialle
+        newCategoryColors[category] = colorPalette[colorIndex % colorPalette.length];
+        colorIndex++;
+      }
+    });
+    
+    // Päivitetään tilat
+    setCategories(newCategories);
+    setCategoryColors(newCategoryColors);
+  };
+
   // UI-tilan hallinta
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showEventDetails, setShowEventDetails] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [activeTab, setActiveTab] = useState("vuosikello");
   const [isFilterPanelVisible, setIsFilterPanelVisible] = useState(true);
+  const [isRightPanelVisible, setIsRightPanelVisible] = useState(true);
   const [selectedSearchEvent, setSelectedSearchEvent] = useState(null);
 
   // Kuukausien nimet
@@ -148,19 +196,21 @@ const Vuosikello = () => {
   };
 
   // Näkyvien tapahtumien päivitys
-  const updateVisibleEvents = (selectedCategories) => {
-    // YearClock-komponentti hoitaa päivityksen
+  const [selectedCategories, setSelectedCategories] = useState(new Set(categories));
+
+  const updateVisibleEvents = (newSelectedCategories) => {
+    setSelectedCategories(newSelectedCategories);
   };
 
   return (
     <div style={{
       backgroundColor: "white",
-      height: "100%",
+      minHeight: "100%",
       position: "relative",
-      paddingRight: "320px",
+      paddingRight: isRightPanelVisible ? "320px" : "40px",
       paddingLeft: isFilterPanelVisible ? "320px" : "40px",
-      overflowY: "auto",
-      transition: "padding-left 0.3s ease",
+      overflowY: "visible",
+      transition: "padding-left 0.3s ease, padding-right 0.3s ease"
     }}>
       {/* Vasen sivupaneeli */}
       <SidePanel 
@@ -178,17 +228,30 @@ const Vuosikello = () => {
         />
       </SidePanel>
 
-      {/* Päänäkymä */}
+      {/* Välilehdet */}
+      <div style={{ 
+        position: "relative", 
+        zIndex: 10, 
+        backgroundColor: "white",
+        paddingTop: "0px",
+        paddingBottom: "0px",
+        borderBottom: "1px solid #eee"
+      }}>
+        <AppTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
+
+      {/* Välilehtien sisältö */}
       <div style={{
-        height: "100vh",
+        minHeight: "calc(100vh - 80px)",
         display: "flex",
         flexDirection: "column",
-        paddingBottom: 0
+        paddingTop: "0",
+        paddingBottom: "40px",
+        margin: "-20px auto 0",
+        maxWidth: (!isFilterPanelVisible && !isRightPanelVisible) ? "1200px" : "100%",
+        width: "100%",
+        overflowY: "auto"
       }}>
-        {/* Välilehdet */}
-        <AppTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-
-        {/* Välilehtien sisältö */}
         {activeTab === "vuosikello" && (
           <YearClock 
             events={events} 
@@ -196,7 +259,9 @@ const Vuosikello = () => {
             monthNames={monthNames} 
             setSelectedMonth={setSelectedMonth} 
             setSelectedEvent={setSelectedEvent} 
-            setShowEventDetails={setShowEventDetails} 
+            setShowEventDetails={setShowEventDetails}
+            selectedCategories={selectedCategories}
+            categoryColors={categoryColors}
           />
         )}
 
@@ -213,24 +278,18 @@ const Vuosikello = () => {
             events={events} 
             setEvents={setEvents} 
             categories={categories} 
-            setCategories={setCategories} 
+            setCategories={updateCategories} 
+            categoryColors={categoryColors}
           />
         )}
       </div>
 
       {/* Oikea sivupaneeli */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        right: 0,
-        width: "300px",
-        height: "100vh",
-        backgroundColor: "white",
-        boxShadow: "-2px 0 5px rgba(0,0,0,0.1)",
-        padding: "20px",
-        overflowY: "auto",
-        zIndex: 1000
-      }}>
+      <SidePanel 
+        isVisible={isRightPanelVisible} 
+        setIsVisible={setIsRightPanelVisible}
+        position="right"
+      >
         <MonthAgenda
           month={selectedMonth}
           events={events}
@@ -239,7 +298,7 @@ const Vuosikello = () => {
           setSelectedMonth={setSelectedMonth}
           categoryColors={categoryColors}
         />
-      </div>
+      </SidePanel>
 
       {/* Tapahtuman tiedot -modaali */}
       {showEventDetails && selectedEvent && (

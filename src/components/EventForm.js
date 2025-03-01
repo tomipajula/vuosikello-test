@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 
-const EventForm = ({ events, setEvents, categories, setCategories }) => {
+const EventForm = ({ events, setEvents, categories, setCategories, categoryColors }) => {
   const [newEvent, setNewEvent] = useState({
     startDate: "",
     endDate: "",
@@ -92,6 +92,14 @@ const EventForm = ({ events, setEvents, categories, setCategories }) => {
                   border: "1px solid #ddd"
                 }}
               >
+                <div style={{
+                  width: "15px",
+                  height: "15px",
+                  borderRadius: "50%",
+                  backgroundColor: categoryColors ? categoryColors[category] : "#ccc",
+                  marginRight: "8px",
+                  border: "1px solid rgba(0,0,0,0.1)"
+                }} />
                 <span style={{ marginRight: "8px" }}>{category}</span>
                 <button
                   onClick={() => {

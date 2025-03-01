@@ -78,16 +78,29 @@ const MonthAgenda = ({ month, events, onClose, monthNames, setSelectedMonth, cat
                   gap: "10px"
                 }}>
                   <div style={{
-                    width: "10px",
-                    height: "10px",
+                    width: "15px",
+                    height: "15px",
                     borderRadius: "50%",
-                    backgroundColor: categoryColors[event.category],
-                    opacity: 0.7
+                    backgroundColor: categoryColors ? categoryColors[event.category] : "#ccc",
+                    opacity: 1,
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                   }} />
                   <div>
                     <div style={{ fontWeight: "500" }}>{event.name}</div>
                     <div style={{ fontSize: "12px", color: "#666" }}>
                       {`${startDate.getDate()}.${startDate.getMonth() + 1} - ${endDate.getDate()}.${endDate.getMonth() + 1}`}
+                    </div>
+                    <div style={{ 
+                      fontSize: "11px", 
+                      color: "#666", 
+                      marginTop: "3px",
+                      backgroundColor: categoryColors ? `${categoryColors[event.category]}20` : "#f0f0f0",
+                      display: "inline-block",
+                      padding: "2px 6px",
+                      borderRadius: "4px"
+                    }}>
+                      {event.category}
                     </div>
                   </div>
                 </div>

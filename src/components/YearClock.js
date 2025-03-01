@@ -10,7 +10,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import * as d3 from 'd3';
 
-const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelectedEvent, setShowEventDetails }) => {
+const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelectedEvent, setShowEventDetails, selectedCategories, categoryColors }) => {
   const clockContainerRef = useRef(null);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [events]);
+  }, [events, selectedCategories]);
 
   useEffect(() => {
     d3.select("#tooltip").remove();
@@ -72,16 +72,21 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
     return overlaps;
   };
 
-  const drawClock = (filteredEvents = events) => {
+  const drawClock = () => {
     // Tyhjennä aiempi sisältö
     d3.select("#vuosikello").selectAll("*").remove();
+
+    // Suodata tapahtumat valittujen kategorioiden mukaan
+    const filteredEvents = events.filter(event => 
+      selectedCategories ? selectedCategories.has(event.category) : true
+    );
 
     const container = clockContainerRef.current;
     if (!container) return;
     
     const containerRect = container.getBoundingClientRect();
-    // Säilytetään alkuperäinen koon laskenta
-    const size = Math.min(containerRect.width, containerRect.height) * 1.4;
+    // Käytetään kiinteää kokoa
+    const size = 1000;
     
     const margin = 140;
     const radius = (size - 2 * margin) / 2;
@@ -132,7 +137,8 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
       };
     });
 
-    const categoryColors = {};
+    // Käytetään App.js:stä tulevaa categoryColors-objektia
+    // Jos categoryColors-propsia ei ole annettu, käytetään varavärejä
     const baseColors = [
       "#7FB3D5",
       "#F9E79F",
@@ -141,9 +147,14 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
       "#F5B7B1"
     ];
 
-    sortedCategories.forEach((category, index) => {
-      categoryColors[category] = baseColors[index % baseColors.length];
-    });
+    // Varmistetaan, että jokaisella kategorialla on väri
+    if (!categoryColors) {
+      const tempCategoryColors = {};
+      sortedCategories.forEach((category, index) => {
+        tempCategoryColors[category] = baseColors[index % baseColors.length];
+      });
+      categoryColors = tempCategoryColors;
+    }
 
     const arc = d3
       .arc()
@@ -410,24 +421,28 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
   return (
     <div style={{ 
       backgroundColor: "white",
-      padding: "40px 30px 30px 80px",
+      padding: "0px",
+      paddingBottom: "20px",
       borderRadius: "12px",
       boxShadow: "0 4px 8px rgba(0,0,0,0.05)",
       flex: 1,
-      margin: "0 20px",
-      minHeight: "1300px",
-      height: "100%"
+      margin: "0 auto",
+      height: "100%",
+      display: "flex",
+      justifyContent: "flex-start",
+      alignItems: "flex-start",
+      width: "100%",
+      marginTop: "-50px"
     }}>
       {/* Vuosikello */}
       <div 
         ref={clockContainerRef}
         style={{
           width: "100%",
-          maxWidth: "700px",
+          maxWidth: "1200px",
           aspectRatio: "1",
           position: "relative",
-          padding: "40px",
-          marginTop: "-20px"
+          margin: "-30px auto 0"
         }}
       >
         <div id="vuosikello" style={{
@@ -436,7 +451,10 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
           left: 0,
           width: "100%",
           height: "100%",
-          backgroundColor: "#ffffff"
+          backgroundColor: "#ffffff",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center"
         }}></div>
       </div>
     </div>

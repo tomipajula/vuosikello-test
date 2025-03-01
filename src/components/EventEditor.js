@@ -14,6 +14,7 @@ const EventEditor = ({ events, setEvents }) => {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Tyylit
   const inputStyle = {
@@ -26,7 +27,7 @@ const EventEditor = ({ events, setEvents }) => {
 
   const deleteButtonStyle = {
     padding: "8px 16px",
-    backgroundColor: "#f44336",
+    backgroundColor: "#d62728", // punainen - värisokeusystävällinen
     color: "white",
     border: "none",
     borderRadius: "4px",
@@ -34,9 +35,20 @@ const EventEditor = ({ events, setEvents }) => {
     fontSize: "14px"
   };
 
+  const updateButtonStyle = {
+    padding: "8px 16px",
+    backgroundColor: "#1f77b4", // tummansininen - värisokeusystävällinen
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "14px",
+    marginRight: "10px"
+  };
+
   const saveButtonStyle = {
     padding: "12px 24px",
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#2ca02c", // vihreä - värisokeusystävällinen
     color: "white",
     border: "none",
     borderRadius: "4px",
@@ -47,9 +59,31 @@ const EventEditor = ({ events, setEvents }) => {
     margin: "0 auto"
   };
 
+  const searchInputStyle = {
+    padding: "10px 15px",
+    border: "1px solid #ddd",
+    borderRadius: "30px",
+    fontSize: "14px",
+    width: "100%",
+    boxSizing: "border-box",
+    backgroundColor: "#f8f8f8",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1) inset",
+    marginBottom: "20px"
+  };
+
   // Suodatetaan tapahtumat
   useEffect(() => {
     let filtered = [...events];
+
+    // Hakutoiminto
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      filtered = filtered.filter(event => 
+        event.name.toLowerCase().includes(searchLower) || 
+        event.details.toLowerCase().includes(searchLower) ||
+        event.category.toLowerCase().includes(searchLower)
+      );
+    }
 
     if (filterCategory) {
       filtered = filtered.filter(event => event.category === filterCategory);
@@ -64,7 +98,7 @@ const EventEditor = ({ events, setEvents }) => {
     }
 
     setEditableEvents(filtered);
-  }, [events, filterCategory, filterStartDate, filterEndDate]);
+  }, [events, filterCategory, filterStartDate, filterEndDate, searchTerm]);
 
   const updateEvent = (index, key, value) => {
     const updatedEvents = editableEvents.map((event, i) =>
@@ -83,9 +117,28 @@ const EventEditor = ({ events, setEvents }) => {
     setEvents(updatedEvents);
   };
 
+  // Päivitä yksittäinen tapahtuma
+  const updateSingleEvent = (index) => {
+    const updatedEvent = editableEvents[index];
+    const allEvents = [...events];
+    
+    // Etsi tapahtuma kaikista tapahtumista
+    const originalEventIndex = events.findIndex(event => 
+      event.name === updatedEvent.name && 
+      event.startDate === updatedEvent.startDate &&
+      event.category === updatedEvent.category
+    );
+    
+    if (originalEventIndex !== -1) {
+      allEvents[originalEventIndex] = updatedEvent;
+      setEvents(allEvents);
+      alert("Tapahtuma päivitetty!");
+    }
+  };
+
   return (
     <div style={{ 
-      maxWidth: "800px", 
+      maxWidth: "1000px", 
       margin: "0 auto", 
       padding: "40px",
       backgroundColor: "white",
@@ -100,6 +153,51 @@ const EventEditor = ({ events, setEvents }) => {
       }}>
         Muokkaa tapahtumia
       </h2>
+
+      {/* Hakutoiminto */}
+      <div style={{
+        marginBottom: "30px"
+      }}>
+        <div style={{
+          position: "relative",
+          width: "100%"
+        }}>
+          <input
+            type="text"
+            placeholder="Hae tapahtumia nimen, kategorian tai lisätietojen perusteella..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={searchInputStyle}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              style={{
+                position: "absolute",
+                right: "15px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: "16px",
+                color: "#999"
+              }}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <div style={{
+            fontSize: "14px",
+            color: "#666",
+            marginTop: "10px"
+          }}>
+            Hakutulokset: {editableEvents.length} tapahtumaa
+          </div>
+        )}
+      </div>
 
       {/* Suodatusvalinnat */}
       <div style={{
@@ -167,135 +265,167 @@ const EventEditor = ({ events, setEvents }) => {
         padding: 0,
         display: "flex",
         flexDirection: "column",
-        gap: "15px"
+        gap: "30px"
       }}>
-        {editableEvents.map((event, index) => (
-          <li key={index} style={{ 
-            padding: "25px",
-            backgroundColor: "white",
+        {editableEvents.length > 0 ? (
+          editableEvents.map((event, index) => (
+            <li key={index} style={{ 
+              padding: "35px",
+              backgroundColor: "white",
+              borderRadius: "8px",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "30px"
+            }}>
+              {/* Ylärivin kentät */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: "30px",
+                alignItems: "start"
+              }}>
+                <div style={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "8px"
+                }}>
+                  <label style={{ 
+                    fontSize: "12px", 
+                    color: "#666",
+                    marginBottom: "4px"
+                  }}>
+                    Nimi
+                  </label>
+                  <input
+                    type="text"
+                    value={event.name}
+                    onChange={(e) => updateEvent(index, "name", e.target.value)}
+                    style={inputStyle}
+                    placeholder="Nimi"
+                  />
+                </div>
+                <div style={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "8px"
+                }}>
+                  <label style={{ 
+                    fontSize: "12px", 
+                    color: "#666",
+                    marginBottom: "4px"
+                  }}>
+                    Alkaa
+                  </label>
+                  <input
+                    type="date"
+                    value={event.startDate}
+                    onChange={(e) => updateEvent(index, "startDate", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "8px"
+                }}>
+                  <label style={{ 
+                    fontSize: "12px", 
+                    color: "#666",
+                    marginBottom: "4px"
+                  }}>
+                    Päättyy
+                  </label>
+                  <input
+                    type="date"
+                    value={event.endDate}
+                    onChange={(e) => updateEvent(index, "endDate", e.target.value)}
+                    style={inputStyle}
+                  />
+                </div>
+                <div style={{ 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "8px"
+                }}>
+                  <label style={{ 
+                    fontSize: "12px", 
+                    color: "#666",
+                    marginBottom: "4px"
+                  }}>
+                    Kategoria
+                  </label>
+                  <input
+                    type="text"
+                    value={event.category}
+                    onChange={(e) => updateEvent(index, "category", e.target.value)}
+                    style={inputStyle}
+                    placeholder="Kategoria"
+                  />
+                </div>
+              </div>
+              
+              {/* Lisätiedot omalla rivillään */}
+              <div style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                gap: "8px",
+                width: "100%"
+              }}>
+                <label style={{ 
+                  fontSize: "12px", 
+                  color: "#666",
+                  marginBottom: "4px"
+                }}>
+                  Lisätiedot
+                </label>
+                <textarea
+                  value={event.details}
+                  onChange={(e) => updateEvent(index, "details", e.target.value)}
+                  style={{
+                    ...inputStyle,
+                    minHeight: "100px",
+                    resize: "vertical"
+                  }}
+                  placeholder="Lisätiedot"
+                />
+              </div>
+              
+              {/* Toimintonapit */}
+              <div style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "15px",
+                marginTop: "10px"
+              }}>
+                <button 
+                  onClick={() => updateSingleEvent(index)}
+                  style={updateButtonStyle}
+                >
+                  Päivitä
+                </button>
+                <button 
+                  onClick={() => deleteEvent(index)}
+                  style={deleteButtonStyle}
+                >
+                  Poista
+                </button>
+              </div>
+            </li>
+          ))
+        ) : (
+          <div style={{
+            textAlign: "center",
+            padding: "40px 20px",
+            backgroundColor: "#f9f9f9",
             borderRadius: "8px",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            gap: "30px",
-            alignItems: "start"
+            color: "#666"
           }}>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              gridColumn: "span 1"
-            }}>
-              <label style={{ 
-                fontSize: "12px", 
-                color: "#666",
-                marginBottom: "4px"
-              }}>
-                Nimi
-              </label>
-            <input
-              type="text"
-              value={event.name}
-              onChange={(e) => updateEvent(index, "name", e.target.value)}
-                style={inputStyle}
-                placeholder="Nimi"
-              />
-            </div>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              gridColumn: "span 1"
-            }}>
-              <label style={{ 
-                fontSize: "12px", 
-                color: "#666",
-                marginBottom: "4px"
-              }}>
-                Alkaa
-              </label>
-            <input
-              type="date"
-              value={event.startDate}
-              onChange={(e) => updateEvent(index, "startDate", e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              gridColumn: "span 1"
-            }}>
-              <label style={{ 
-                fontSize: "12px", 
-                color: "#666",
-                marginBottom: "4px"
-              }}>
-                Päättyy
-              </label>
-            <input
-              type="date"
-              value={event.endDate}
-              onChange={(e) => updateEvent(index, "endDate", e.target.value)}
-                style={inputStyle}
-              />
-            </div>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              gridColumn: "span 1"
-            }}>
-              <label style={{ 
-                fontSize: "12px", 
-                color: "#666",
-                marginBottom: "4px"
-              }}>
-                Kategoria
-              </label>
-            <input
-              type="text"
-              value={event.category}
-              onChange={(e) => updateEvent(index, "category", e.target.value)}
-                style={inputStyle}
-                placeholder="Kategoria"
-              />
-            </div>
-            <div style={{ 
-              display: "flex", 
-              flexDirection: "column", 
-              gap: "8px",
-              gridColumn: "span 1"
-            }}>
-              <label style={{ 
-                fontSize: "12px", 
-                color: "#666",
-                marginBottom: "4px"
-              }}>
-                Lisätiedot
-              </label>
-            <input
-              type="text"
-              value={event.details}
-              onChange={(e) => updateEvent(index, "details", e.target.value)}
-                style={inputStyle}
-                placeholder="Lisätiedot"
-              />
-            </div>
-            <button 
-              onClick={() => deleteEvent(index)}
-              style={{
-                ...deleteButtonStyle,
-                alignSelf: "flex-end",
-                marginBottom: "4px",
-                gridColumn: "6 / 7"
-              }}
-            >
-              Poista
-            </button>
-          </li>
-        ))}
+            {searchTerm ? 
+              "Ei hakutuloksia. Kokeile eri hakusanoja." : 
+              "Ei tapahtumia näytettäväksi. Muuta suodattimia nähdäksesi tapahtumia."}
+          </div>
+        )}
       </ul>
       <button 
         onClick={saveChanges}
