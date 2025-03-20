@@ -19,19 +19,16 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          submodules: true
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # Vaihda tarvittaessa projektisi Node-versioon
+          node-version: '18'
 
       - name: Install dependencies & Build
         run: |
-          cd src  # Varmista, että olet oikeassa hakemistossa
           npm install
-          CI=false npm run build  # 🔹 Tämä estää varoituksia muuttumasta virheiksi
+          npm run build
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
@@ -40,9 +37,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
-          app_location: "/src"  # Vaihda tarvittaessa oikeaan hakemistoon
-          output_location: "build"  # Tämä on Reactin build-kansio
-          api_location: ""  # Ei API-toimintoja
+          app_location: "." # Osoittaa sovelluksen juuri-hakemistoon
+          output_location: "build" # Reactin build-kansio
+          api_location: "" # Ei API-palvelua
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
