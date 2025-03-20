@@ -7,10 +7,11 @@ import React, { useState, useEffect } from 'react';
  * Käyttäjä voi suodattaa tapahtumia kategorian ja päivämäärän mukaan, muokata tapahtumien
  * tietoja ja tallentaa muutokset. Komponentti näyttää tapahtumat listana ja tarjoaa
  * käyttöliittymän niiden muokkaamiseen.
+ * Näytetään vain valitun projektin tapahtumat.
  */
 
-const EventEditor = ({ events, setEvents }) => {
-  const [editableEvents, setEditableEvents] = useState(events);
+const EventEditor = ({ events, setEvents, selectedProject, categories }) => {
+  const [editableEvents, setEditableEvents] = useState([]);
   const [filterCategory, setFilterCategory] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
@@ -73,7 +74,8 @@ const EventEditor = ({ events, setEvents }) => {
 
   // Suodatetaan tapahtumat
   useEffect(() => {
-    let filtered = [...events];
+    // Suodatetaan ensin projektin mukaan
+    let filtered = events.filter(event => !event.projectId || event.projectId === selectedProject?.id);
 
     // Hakutoiminto
     if (searchTerm) {
@@ -98,7 +100,7 @@ const EventEditor = ({ events, setEvents }) => {
     }
 
     setEditableEvents(filtered);
-  }, [events, filterCategory, filterStartDate, filterEndDate, searchTerm]);
+  }, [events, filterCategory, filterStartDate, filterEndDate, searchTerm, selectedProject]);
 
   const updateEvent = (index, key, value) => {
     const updatedEvents = editableEvents.map((event, i) =>
@@ -108,31 +110,83 @@ const EventEditor = ({ events, setEvents }) => {
   };
 
   const saveChanges = () => {
-    setEvents(editableEvents);
+    // Yhdistä muokatut tapahtumat ja ne tapahtumat, joita ei ole suodatettu näkyviin
+    const updatedEvents = [...events];
+    
+    // Käy läpi muokattavat tapahtumat
+    editableEvents.forEach(editedEvent => {
+      // Lisää addedDate-kenttä, jos sitä ei ole
+      const eventWithDate = {
+        ...editedEvent,
+        addedDate: editedEvent.addedDate || new Date().toISOString()
+      };
+      
+      // Etsi vastaava tapahtuma kaikista tapahtumista
+      const originalIndex = updatedEvents.findIndex(event => 
+        event.name === eventWithDate.name && 
+        event.startDate === eventWithDate.startDate &&
+        event.category === eventWithDate.category
+      );
+      
+      if (originalIndex !== -1) {
+        // Päivitä olemassa oleva tapahtuma
+        updatedEvents[originalIndex] = eventWithDate;
+      } else {
+        // Lisää uusi tapahtuma
+        updatedEvents.push(eventWithDate);
+      }
+    });
+    
+    setEvents(updatedEvents);
+    alert("Kaikki muutokset tallennettu!");
   };
 
   const deleteEvent = (index) => {
-    const updatedEvents = editableEvents.filter((_, i) => i !== index);
-    setEditableEvents(updatedEvents);
-    setEvents(updatedEvents);
+    const eventToDelete = editableEvents[index];
+    
+    // Poista tapahtuma muokattavista tapahtumista
+    const updatedEditableEvents = editableEvents.filter((_, i) => i !== index);
+    setEditableEvents(updatedEditableEvents);
+    
+    // Poista tapahtuma myös alkuperäisestä events-tilasta
+    const updatedAllEvents = events.filter(event => 
+      !(event.name === eventToDelete.name && 
+        event.startDate === eventToDelete.startDate &&
+        event.category === eventToDelete.category)
+    );
+    
+    setEvents(updatedAllEvents);
+    alert("Tapahtuma poistettu!");
   };
 
   // Päivitä yksittäinen tapahtuma
   const updateSingleEvent = (index) => {
-    const updatedEvent = editableEvents[index];
+    const updatedEvent = {
+      ...editableEvents[index],
+      addedDate: new Date().toISOString(), // Päivitetään lisäyspäivämäärä
+      projectId: selectedProject?.id // Varmistetaan, että tapahtumalla on projektin ID
+    };
     const allEvents = [...events];
     
-    // Etsi tapahtuma kaikista tapahtumista
+    // Etsi tapahtuma kaikista tapahtumista - käytä indeksiä jos mahdollista
     const originalEventIndex = events.findIndex(event => 
-      event.name === updatedEvent.name && 
+      (event.name === updatedEvent.name && 
       event.startDate === updatedEvent.startDate &&
-      event.category === updatedEvent.category
+      event.category === updatedEvent.category) ||
+      // Vertaa myös muita kenttiä varmuuden vuoksi
+      (event.name === updatedEvent.name && 
+       event.details === updatedEvent.details)
     );
     
     if (originalEventIndex !== -1) {
+      // Päivitä olemassa oleva tapahtuma
       allEvents[originalEventIndex] = updatedEvent;
       setEvents(allEvents);
       alert("Tapahtuma päivitetty!");
+    } else {
+      // Jos tapahtumaa ei löydy, lisää se uutena
+      setEvents([...allEvents, updatedEvent]);
+      alert("Tapahtuma lisätty!");
     }
   };
 
@@ -222,11 +276,11 @@ const EventEditor = ({ events, setEvents }) => {
             }}
           >
             <option value="">Kaikki kategoriat</option>
-            {[...new Set(events.map(e => e.category))].sort().map(category => (
+            {categories.map(category => (
               <option key={category} value={category}>{category}</option>
             ))}
           </select>
-      </div>
+        </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <label style={{ fontSize: "12px", color: "#666" }}>Alkupäivämäärä</label>
@@ -355,13 +409,21 @@ const EventEditor = ({ events, setEvents }) => {
                   }}>
                     Kategoria
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={event.category}
                     onChange={(e) => updateEvent(index, "category", e.target.value)}
-                    style={inputStyle}
-                    placeholder="Kategoria"
-                  />
+                    style={{
+                      ...inputStyle,
+                      width: "100%",
+                      height: "36px",
+                      boxSizing: "border-box"
+                    }}
+                  >
+                    <option value="">Valitse kategoria</option>
+                    {categories.map(category => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               

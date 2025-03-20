@@ -8,20 +8,36 @@ import EventModal from "./EventModal";
  * ja tapahtumien hakemisen nimellä. Käyttäjä voi valita näytettävät kategoriat
  * ja etsiä tapahtumia hakusanalla. Komponentti näyttää myös viimeisimmät tapahtumat
  * historia-osiossa.
+ * Näytetään vain valitun projektin tapahtumat.
  */
 
-const FilterPanel = ({ categories, events, onUpdateVisibleEvents, setSelectedEvent, selectedSearchEvent, setSelectedSearchEvent }) => {
+const FilterPanel = ({ categories, events, onUpdateVisibleEvents, setSelectedEvent, selectedSearchEvent, setSelectedSearchEvent, selectedProject, setEvents }) => {
   const [recentEvents, setRecentEvents] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState(new Set(categories));
 
+  // Suodatetaan projektin tapahtumat
+  const projectEvents = events.filter(event => !event.projectId || event.projectId === selectedProject?.id);
+
   useEffect(() => {
-    const latest = events
-      .sort((a, b) => new Date(b.addedDate) - new Date(a.addedDate))
+    // Järjestetään tapahtumat lisäyspäivämäärän mukaan, jos se on saatavilla
+    // Jos addedDate-kenttää ei ole, käytetään startDate-kenttää
+    const latest = projectEvents
+      .sort((a, b) => {
+        // Jos molemmilla on addedDate, käytetään sitä
+        if (a.addedDate && b.addedDate) {
+          return new Date(b.addedDate) - new Date(a.addedDate);
+        }
+        // Jos vain toisella on addedDate, se on uudempi
+        if (a.addedDate) return -1;
+        if (b.addedDate) return 1;
+        // Jos kummallakaan ei ole addedDate, käytetään startDate-kenttää
+        return new Date(b.startDate) - new Date(a.startDate);
+      })
       .slice(0, 5);
     setRecentEvents(latest);
-  }, [events]);
+  }, [events, selectedProject]);
 
   const toggleCategory = (category) => {
     const newSelected = new Set(selectedCategories);
@@ -51,7 +67,7 @@ const FilterPanel = ({ categories, events, onUpdateVisibleEvents, setSelectedEve
       return;
     }
 
-    const results = events.filter(event => 
+    const results = projectEvents.filter(event => 
       event.name.toLowerCase().includes(term.toLowerCase()) ||
       event.category.toLowerCase().includes(term.toLowerCase())
     ).slice(0, 5);
@@ -256,6 +272,14 @@ const FilterPanel = ({ categories, events, onUpdateVisibleEvents, setSelectedEve
         <EventModal
           event={selectedSearchEvent}
           onClose={() => setSelectedSearchEvent(null)}
+          onSave={(updatedEvent) => {
+            // Päivitä tapahtuma events-listassa
+            const updatedEvents = events.map(event => 
+              event.id === updatedEvent.id ? updatedEvent : event
+            );
+            setEvents(updatedEvents);
+            setSelectedSearchEvent(null);
+          }}
         />
       )}
     </div>

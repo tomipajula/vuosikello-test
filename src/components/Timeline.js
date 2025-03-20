@@ -8,9 +8,10 @@ import * as d3 from 'd3';
  * Käyttäjä voi valita näytettävän vuoden pudotusvalikosta. Tapahtumat näytetään
  * kategorioidensa mukaisesti värikoodattuina palkkeina aikajanalla. Tapahtumien
  * tiedot näytetään, kun hiiri viedään tapahtuman päälle.
+ * Näytetään vain valitun projektin tapahtumat.
  */
 
-const Timeline = ({ events, categoryColors }) => {
+const Timeline = ({ events, categoryColors, selectedProject }) => {
   const [selectedYear, setSelectedYear] = useState("2025");
 
   useEffect(() => {
@@ -20,11 +21,13 @@ const Timeline = ({ events, categoryColors }) => {
   const drawTimeline = () => {
     d3.select("#timeline").selectAll("*").remove();
 
-    // Suodatetaan tapahtumat valitun vuoden mukaan
-    const yearEvents = events.filter(event => 
-      new Date(event.startDate).getFullYear().toString() === selectedYear ||
-      new Date(event.endDate).getFullYear().toString() === selectedYear
-    );
+    // Suodatetaan tapahtumat valitun vuoden ja projektin mukaan
+    const yearEvents = events.filter(event => {
+      const isInSelectedYear = new Date(event.startDate).getFullYear().toString() === selectedYear ||
+                              new Date(event.endDate).getFullYear().toString() === selectedYear;
+      const isProjectEvent = !event.projectId || event.projectId === selectedProject?.id;
+      return isInSelectedYear && isProjectEvent;
+    });
 
     const margin = { top: 50, right: 50, bottom: 80, left: 150 };
     const width = 1000 - margin.left - margin.right;

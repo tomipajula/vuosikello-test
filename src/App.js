@@ -21,7 +21,9 @@ import EventForm from "./components/EventForm";
 import YearClock from "./components/YearClock";
 import AppTabs from "./components/AppTabs";
 import SidePanel from "./components/SidePanel";
+import ProjectSelector from "./components/ProjectSelector";
 import { styles } from "./styles";
+import { startReminderCheck } from "./services/reminderService";
 
 // Määritellään kategorioiden värit globaalisti
 const categoryColors = {
@@ -32,7 +34,13 @@ const categoryColors = {
 };
 
 // Muutetaan categoryColors objektista tilaksi, jotta sitä voidaan päivittää
-const Vuosikello = () => {
+const App = () => {
+  // Projektin valinta - haetaan local storagesta jos saatavilla
+  const [selectedProject, setSelectedProject] = useState(() => {
+    const savedProject = localStorage.getItem('selectedProject');
+    return savedProject ? JSON.parse(savedProject) : null;
+  });
+  
   // Määritellään väripaletti uusille kategorioille - värisokeusystävällinen
   const colorPalette = [
     "#1f77b4", // tummansininen
@@ -63,67 +71,85 @@ const Vuosikello = () => {
   // Tapahtumat
   const [events, setEvents] = useState([
     {
+      id: "1",
       startDate: "2025-01-01",
       endDate: "2025-01-10",
       category: "Markkinointi",
       name: "Tammikuun ale",
-      details: "Alennusmyynti alkaa."
+      details: "Alennusmyynti alkaa.",
+      addedDate: "2025-01-01T08:00:00.000Z"
     },
     {
+      id: "2",
       startDate: "2025-07-01",
       endDate: "2025-07-15",
       category: "Markkinointi",
       name: "Kesäkampanja",
-      details: "Kesäale käynnissä."
+      details: "Kesäale käynnissä.",
+      addedDate: "2025-01-02T08:00:00.000Z"
     },
     {
+      id: "3",
       startDate: "2025-11-29",
       endDate: "2025-11-30",
       category: "Markkinointi",
       name: "Black Friday",
-      details: "Vuoden suurin alepäivä."
+      details: "Vuoden suurin alepäivä.",
+      addedDate: "2025-01-03T08:00:00.000Z"
     },
     {
+      id: "4",
       startDate: "2025-03-15",
       endDate: "2025-03-30",
       category: "Talous",
       name: "Budjetointi",
-      details: "Kvartaalin budjetointi"
+      details: "Kvartaalin budjetointi",
+      addedDate: "2025-01-04T08:00:00.000Z"
     },
     {
+      id: "5",
       startDate: "2025-06-15",
       endDate: "2025-06-30",
       category: "Talous",
       name: "Puolivuotiskatsaus",
-      details: "Talouden puolivuotiskatsaus"
+      details: "Talouden puolivuotiskatsaus",
+      addedDate: "2025-01-05T08:00:00.000Z"
     },
     {
+      id: "6",
       startDate: "2025-02-01",
       endDate: "2025-02-15",
       category: "Henkilöstöhallinto",
       name: "Kehityskeskustelut",
-      details: "Vuosittaiset kehityskeskustelut"
+      details: "Vuosittaiset kehityskeskustelut",
+      addedDate: "2025-01-06T08:00:00.000Z"
     },
     {
+      id: "7",
       startDate: "2025-08-01",
       endDate: "2025-08-15",
       category: "Henkilöstöhallinto",
       name: "Tyhy-päivä",
-      details: "Työhyvinvointipäivä"
+      details: "Työhyvinvointipäivä",
+      addedDate: "2025-01-07T08:00:00.000Z"
     },
     {
+      id: "8",
       startDate: "2025-05-01",
       endDate: "2025-05-02",
       category: "Yhteiset tapahtumat",
       name: "Kesäjuhla",
-      details: "Yrityksen kesäjuhla"
+      details: "Yrityksen kesäjuhla",
+      addedDate: "2025-01-08T08:00:00.000Z"
     },
     {
+      id: "9",
       startDate: "2025-12-15",
       endDate: "2025-12-16",
       category: "Yhteiset tapahtumat",
       name: "Pikkujoulut",
-      details: "Yrityksen pikkujoulut"
+      details: "Yrityksen pikkujoulut",
+      addedDate: "2025-01-09T08:00:00.000Z"
     }
   ]);
 
@@ -152,6 +178,24 @@ const Vuosikello = () => {
     // Päivitetään tilat
     setCategories(newCategories);
     setCategoryColors(newCategoryColors);
+    
+    // Tallennetaan kategoriat projektikohtaisesti local storageen
+    if (selectedProject) {
+      // Päivitetään projektin kategoriat
+      const updatedProject = {
+        ...selectedProject,
+        categories: newCategories
+      };
+      
+      // Päivitetään valittu projekti
+      setSelectedProject(updatedProject);
+      
+      // Tallennetaan päivitetty projekti local storageen
+      localStorage.setItem('selectedProject', JSON.stringify(updatedProject));
+      
+      // Tallennetaan projektin kategoriat erikseen
+      localStorage.setItem(`categories_${selectedProject.id}`, JSON.stringify(newCategories));
+    }
   };
 
   // UI-tilan hallinta
@@ -202,6 +246,190 @@ const Vuosikello = () => {
     setSelectedCategories(newSelectedCategories);
   };
 
+  // Projektin valinta
+  const handleProjectSelect = (project) => {
+    setSelectedProject(project);
+    // Tallennetaan valittu projekti local storageen
+    localStorage.setItem('selectedProject', JSON.stringify(project));
+    
+    // Haetaan projektin tapahtumat local storagesta tai käytetään oletusarvoja
+    const projectEvents = localStorage.getItem(`events_${project.id}`);
+    if (projectEvents) {
+      setEvents(JSON.parse(projectEvents));
+    } else if (project.events) {
+      // Jos projektilla on valmiiksi tapahtumia
+      // Lisätään projectId jokaiseen tapahtumaan
+      const eventsWithProjectId = project.events.map(event => ({
+        ...event,
+        projectId: project.id
+      }));
+      setEvents(eventsWithProjectId);
+      // Tallennetaan tapahtumat local storageen
+      localStorage.setItem(`events_${project.id}`, JSON.stringify(eventsWithProjectId));
+    } else {
+      // Jos projektilla ei ole tapahtumia, asetetaan tyhjä lista
+      setEvents([]);
+      // Tallennetaan tyhjä lista local storageen
+      localStorage.setItem(`events_${project.id}`, JSON.stringify([]));
+    }
+    
+    // Haetaan projektin kategoriat local storagesta
+    const projectCategories = localStorage.getItem(`categories_${project.id}`);
+    
+    // Jos projektin kategoriat löytyvät local storagesta, käytetään niitä
+    if (projectCategories) {
+      const parsedCategories = JSON.parse(projectCategories);
+      setCategories(parsedCategories);
+      
+      // Päivitetään kategorioiden värit
+      const newCategoryColors = {...categoryColors};
+      let colorIndex = 0;
+      
+      parsedCategories.forEach(category => {
+        if (!newCategoryColors[category]) {
+          // Määritellään uusi väri kategorialle
+          newCategoryColors[category] = colorPalette[colorIndex % colorPalette.length];
+          colorIndex++;
+        }
+      });
+      
+      setCategoryColors(newCategoryColors);
+      
+      // Päivitetään valitut kategoriat
+      setSelectedCategories(new Set(parsedCategories));
+    } else if (project.categories) {
+      // Jos projektin kategorioita ei löydy local storagesta, mutta projektilla on kategoriat
+      setCategories(project.categories);
+      
+      // Päivitetään kategorioiden värit
+      const newCategoryColors = {...categoryColors};
+      let colorIndex = 0;
+      
+      project.categories.forEach(category => {
+        if (!newCategoryColors[category]) {
+          // Määritellään uusi väri kategorialle
+          newCategoryColors[category] = colorPalette[colorIndex % colorPalette.length];
+          colorIndex++;
+        }
+      });
+      
+      setCategoryColors(newCategoryColors);
+      
+      // Päivitetään valitut kategoriat
+      setSelectedCategories(new Set(project.categories));
+      
+      // Tallennetaan kategoriat local storageen
+      localStorage.setItem(`categories_${project.id}`, JSON.stringify(project.categories));
+    } else {
+      // Jos projektilla ei ole kategorioita, käytetään oletuskategorioita
+      const defaultCategories = [
+        "Markkinointi",
+        "Talous",
+        "Henkilöstöhallinto",
+        "Yhteiset tapahtumat"
+      ];
+      setCategories(defaultCategories);
+      setSelectedCategories(new Set(defaultCategories));
+      
+      // Tallennetaan oletuskategoriat projektin kategorioiksi
+      localStorage.setItem(`categories_${project.id}`, JSON.stringify(defaultCategories));
+    }
+  };
+
+  // Tallenna tapahtumat kun ne muuttuvat
+  useEffect(() => {
+    if (selectedProject) {
+      localStorage.setItem(`events_${selectedProject.id}`, JSON.stringify(events));
+    }
+  }, [events, selectedProject]);
+
+  // Takaisin projektivalintaan
+  const handleBackToProjects = () => {
+    setSelectedProject(null);
+    // Poistetaan valittu projekti local storagesta
+    localStorage.removeItem('selectedProject');
+  };
+
+  // Projektin poistaminen
+  const handleDeleteProject = () => {
+    if (!selectedProject) return;
+    
+    // Kysytään käyttäjältä varmistus
+    const isConfirmed = window.confirm(`Haluatko varmasti poistaa projektin "${selectedProject.name}"? Tätä toimintoa ei voi peruuttaa.`);
+    
+    if (isConfirmed) {
+      // Poistetaan projektin tapahtumat local storagesta
+      localStorage.removeItem(`events_${selectedProject.id}`);
+      
+      // Poistetaan projektin kategoriat local storagesta
+      localStorage.removeItem(`categories_${selectedProject.id}`);
+      
+      // Haetaan kaikki projektit
+      const savedProjects = localStorage.getItem('projects');
+      if (savedProjects) {
+        const projects = JSON.parse(savedProjects);
+        
+        // Poistetaan projekti listasta
+        const updatedProjects = projects.filter(project => project.id !== selectedProject.id);
+        
+        // Tallennetaan päivitetty lista
+        localStorage.setItem('projects', JSON.stringify(updatedProjects));
+      }
+      
+      // Palataan projektivalintaan
+      setSelectedProject(null);
+      localStorage.removeItem('selectedProject');
+    }
+  };
+
+  // Lisätään useEffect hook projektin tietojen päivittämiseen
+  useEffect(() => {
+    const savedProject = localStorage.getItem('selectedProject');
+    if (savedProject) {
+      const project = JSON.parse(savedProject);
+      setSelectedProject(project);
+      
+      // Haetaan projektin tapahtumat
+      const projectEvents = localStorage.getItem(`events_${project.id}`);
+      if (projectEvents) {
+        setEvents(JSON.parse(projectEvents));
+      }
+      
+      // Haetaan projektin kategoriat
+      const projectCategories = localStorage.getItem(`categories_${project.id}`);
+      if (projectCategories) {
+        const parsedCategories = JSON.parse(projectCategories);
+        setCategories(parsedCategories);
+        
+        // Päivitetään kategorioiden värit
+        const newCategoryColors = {...categoryColors};
+        let colorIndex = 0;
+        
+        parsedCategories.forEach(category => {
+          if (!newCategoryColors[category]) {
+            // Määritellään uusi väri kategorialle
+            newCategoryColors[category] = colorPalette[colorIndex % colorPalette.length];
+            colorIndex++;
+          }
+        });
+        
+        setCategoryColors(newCategoryColors);
+        setSelectedCategories(new Set(parsedCategories));
+      }
+    }
+  }, [selectedProject?.id]); // Lisätään riippuvuus selectedProject.id:stä
+
+  // Käynnistä muistutusten tarkistus
+  useEffect(() => {
+    startReminderCheck();
+  }, []);
+
+  // Jos projektia ei ole valittu, näytetään projektin valintanäyttö
+  if (!selectedProject) {
+    return <ProjectSelector onSelectProject={handleProjectSelect} />;
+  }
+
+  // Muuten näytetään vuosikello
   return (
     <div style={{
       backgroundColor: "white",
@@ -225,8 +453,27 @@ const Vuosikello = () => {
           setSelectedEvent={setSelectedEvent}
           selectedSearchEvent={selectedSearchEvent}
           setSelectedSearchEvent={setSelectedSearchEvent}
+          selectedProject={selectedProject}
+          setEvents={setEvents}
         />
       </SidePanel>
+
+      {/* Projektin nimi */}
+      <div style={{
+        textAlign: 'center',
+        padding: '20px 0 15px 0',
+        borderBottom: '1px solid #eee',
+        backgroundColor: '#f9f9f9'
+      }}>
+        <h2 style={{
+          margin: 0,
+          fontSize: '22px',
+          fontWeight: '500',
+          color: '#333'
+        }}>
+          {selectedProject.name}
+        </h2>
+      </div>
 
       {/* Välilehdet */}
       <div style={{ 
@@ -237,7 +484,42 @@ const Vuosikello = () => {
         paddingBottom: "0px",
         borderBottom: "1px solid #eee"
       }}>
-        <AppTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          padding: '10px 20px',
+          position: 'relative' 
+        }}>
+          {/* Takaisin-nappi vasemmassa reunassa */}
+          <div style={{
+            position: 'absolute',
+            left: '50px',
+            top: '50%',
+            transform: 'translateY(-50%)'
+          }}>
+            <button 
+              onClick={handleBackToProjects} 
+              style={{
+                padding: '8px 12px',
+                backgroundColor: 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                color: '#555'
+              }}
+              title="Vaihda projektia"
+            >
+              <span style={{ fontSize: '24px', marginRight: '5px' }}>&#8592;</span>
+            </button>
+          </div>
+          
+          {/* Välilehdet keskellä */}
+          <AppTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+        </div>
       </div>
 
       {/* Välilehtien sisältö */}
@@ -245,9 +527,9 @@ const Vuosikello = () => {
         minHeight: "calc(100vh - 80px)",
         display: "flex",
         flexDirection: "column",
-        paddingTop: "0",
+        paddingTop: "20px",
         paddingBottom: "40px",
-        margin: "-20px auto 0",
+        margin: "0 auto",
         maxWidth: (!isFilterPanelVisible && !isRightPanelVisible) ? "1200px" : "100%",
         width: "100%",
         overflowY: "auto"
@@ -262,15 +544,16 @@ const Vuosikello = () => {
             setShowEventDetails={setShowEventDetails}
             selectedCategories={selectedCategories}
             categoryColors={categoryColors}
+            selectedProject={selectedProject}
           />
         )}
 
         {activeTab === "aikajana" && (
-          <Timeline events={events} categoryColors={categoryColors} />
+          <Timeline events={events} categoryColors={categoryColors} selectedProject={selectedProject} />
         )}
 
         {activeTab === "muokkaa" && (
-          <EventEditor events={events} setEvents={setEvents} />
+          <EventEditor events={events} setEvents={setEvents} selectedProject={selectedProject} categories={categories} />
         )}
 
         {activeTab === "lisaa" && (
@@ -280,6 +563,8 @@ const Vuosikello = () => {
             categories={categories} 
             setCategories={updateCategories} 
             categoryColors={categoryColors}
+            selectedProject={selectedProject}
+            handleDeleteProject={handleDeleteProject}
           />
         )}
       </div>
@@ -297,6 +582,7 @@ const Vuosikello = () => {
           monthNames={monthNames}
           setSelectedMonth={setSelectedMonth}
           categoryColors={categoryColors}
+          selectedProject={selectedProject}
         />
       </SidePanel>
 
@@ -308,10 +594,19 @@ const Vuosikello = () => {
             setShowEventDetails(false);
             setSelectedEvent(null);
           }}
+          onSave={(updatedEvent) => {
+            // Päivitä tapahtuma events-listassa
+            const updatedEvents = events.map(event => 
+              event.id === updatedEvent.id ? { ...updatedEvent, id: event.id } : event
+            );
+            setEvents(updatedEvents);
+            setShowEventDetails(false);
+            setSelectedEvent(null);
+          }}
         />
       )}
     </div>
   );
 };
 
-export default Vuosikello;
+export default App;

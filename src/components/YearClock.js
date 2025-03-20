@@ -5,13 +5,15 @@
  * aikajanalla. Tapahtumat on järjestetty kuukausittain ja värikoodattu kategorioiden
  * mukaan. Käyttäjä voi valita kuukauden klikkaamalla sitä, ja tapahtuman tiedot
  * näytetään, kun hiiri viedään tapahtuman päälle.
+ * Näytetään vain valitun projektin tapahtumat.
  */
 
 import React, { useEffect, useState, useRef } from 'react';
 import * as d3 from 'd3';
 
-const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelectedEvent, setShowEventDetails, selectedCategories, categoryColors }) => {
+const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelectedEvent, setShowEventDetails, selectedCategories, categoryColors, selectedProject }) => {
   const clockContainerRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     drawClock();
@@ -22,6 +24,11 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
     // Poistetaan kuuntelija kun komponentti unmountataan
     return () => {
       window.removeEventListener('resize', handleResize);
+      // Puhdistetaan intervalli kun komponentti unmountataan
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [events, selectedCategories]);
 
@@ -76,10 +83,12 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
     // Tyhjennä aiempi sisältö
     d3.select("#vuosikello").selectAll("*").remove();
 
-    // Suodata tapahtumat valittujen kategorioiden mukaan
-    const filteredEvents = events.filter(event => 
-      selectedCategories ? selectedCategories.has(event.category) : true
-    );
+    // Suodata tapahtumat valittujen kategorioiden ja projektin mukaan
+    const filteredEvents = events.filter(event => {
+      const isCategorySelected = selectedCategories ? selectedCategories.has(event.category) : true;
+      const isProjectEvent = !event.projectId || event.projectId === selectedProject?.id;
+      return isCategorySelected && isProjectEvent;
+    });
 
     const container = clockContainerRef.current;
     if (!container) return;
@@ -176,6 +185,47 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
         .attr("stroke", categoryColors[category])
         .attr("stroke-width", 1)
         .attr("stroke-opacity", 0.3);
+
+      // Piirretään viikkoviivat jokaiselle kuukaudelle (4 viikkoa per kuukausi)
+      const monthBoundaries = Array.from({ length: 12 }, (_, i) => new Date(2025, i, 1));
+      monthBoundaries.forEach((boundaryDate, i) => {
+        // Lasketaan seuraavan kuukauden raja
+        const nextMonthIndex = (i + 1) % 12;
+        const nextMonthDate = new Date(2025, nextMonthIndex, 1);
+        
+        // Lasketaan kulma kuukauden sisällä
+        const startAngle = scale(boundaryDate);
+        const endAngle = scale(nextMonthDate);
+        
+        // Piirretään viikkoviivat kuukauden sisällä
+        for (let week = 1; week <= 3; week++) {
+          let weekAngle;
+          
+          // Käsitellään vuodenvaihde erikseen
+          if (i === 11) { // Joulukuu
+            const angleRange = (2 * Math.PI - startAngle) + scale(new Date(2025, 0, 1));
+            weekAngle = startAngle + (week * angleRange / 4);
+            if (weekAngle >= 2 * Math.PI) {
+              weekAngle -= 2 * Math.PI;
+            }
+          } else {
+            const angleRange = endAngle - startAngle;
+            weekAngle = startAngle + (week * angleRange / 4);
+          }
+          
+          // Muunnetaan kulma koordinaateiksi
+          const adjustedAngle = weekAngle - Math.PI / 2;
+          
+          g.append("line")
+            .attr("x1", inner * Math.cos(adjustedAngle))
+            .attr("y1", inner * Math.sin(adjustedAngle))
+            .attr("x2", outer * Math.cos(adjustedAngle))
+            .attr("y2", outer * Math.sin(adjustedAngle))
+            .attr("stroke", categoryColors[category])
+            .attr("stroke-width", 0.5)
+            .attr("stroke-opacity", 0.15);
+        }
+      });
 
       const radius_text = (inner + outer) / 2;
       const textArc = d3.arc()
@@ -399,7 +449,13 @@ const YearClock = ({ events, categories, monthNames, setSelectedMonth, setSelect
       .attr("fill", "rgba(231, 76, 60, 0.3)")
       .style("filter", "drop-shadow(0 0 1px rgba(231, 76, 60, 0.2))");
 
-    setInterval(() => {
+    // Puhdistetaan mahdollinen aiempi intervalli
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Tallennetaan uusi intervalli ref-muuttujaan
+    intervalRef.current = setInterval(() => {
       const now = new Date();
       const currentAngle = scale(now) - Math.PI / 2;
       

@@ -3,7 +3,7 @@ import React from 'react';
 /**
  * AppTabs - Sovelluksen välilehtien hallintakomponentti
  * 
- * Tämä komponentti näyttää sovelluksen päävälilehdet (Vuosikello, Lisää tapahtuma, 
+ * Tämä komponentti näyttää sovelluksen päävälilehdet (Vuosikello, Muokkaa, 
  * Aikajana, Muokkaa tapahtumia) ja hallitsee aktiivisen välilehden vaihtamista.
  * Komponentti saa activeTab ja setActiveTab -propsit, joiden avulla se kommunikoi
  * päätilan kanssa.
@@ -25,8 +25,10 @@ const AppTabs = ({ activeTab, setActiveTab }) => {
     <div style={{
       display: "flex",
       gap: "2px",
-      padding: "20px 20px 0",
-      justifyContent: "center"
+      padding: "0",
+      justifyContent: "center",
+      width: "fit-content",
+      margin: "0 auto"
     }}>
       <button
         onClick={() => setActiveTab("vuosikello")}
@@ -38,7 +40,7 @@ const AppTabs = ({ activeTab, setActiveTab }) => {
         onClick={() => setActiveTab("lisaa")}
         style={tabStyle("lisaa")}
       >
-        Lisää tapahtuma
+        Muokkaa
       </button>
       <button
         onClick={() => setActiveTab("aikajana")}

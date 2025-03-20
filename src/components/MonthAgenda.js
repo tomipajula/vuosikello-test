@@ -6,13 +6,23 @@ import React from "react";
  * Tämä komponentti näyttää valitun kuukauden tapahtumat listana.
  * Käyttäjä voi selata kuukausia eteen- ja taaksepäin nuolipainikkeilla.
  * Tapahtumat näytetään aikajärjestyksessä ja värikoodataan kategorian mukaan.
+ * Näytetään vain valitun projektin tapahtumat.
  */
 
-const MonthAgenda = ({ month, events, onClose, monthNames, setSelectedMonth, categoryColors }) => {
+const MonthAgenda = ({ month, events, onClose, monthNames, setSelectedMonth, categoryColors, selectedProject }) => {
+  // Suodatetaan tapahtumat kuukauden ja projektin mukaan
   const monthEvents = events.filter(event => {
     const eventStart = new Date(event.startDate);
     const eventEnd = new Date(event.endDate);
-    return eventStart.getMonth() === month || eventEnd.getMonth() === month;
+    
+    // Tarkistetaan, että tapahtuma kuuluu valittuun kuukauteen
+    const isInSelectedMonth = eventStart.getMonth() === month || eventEnd.getMonth() === month;
+    
+    // Tarkistetaan, että tapahtuma kuuluu valittuun projektiin
+    // Jos tapahtumalla on projectId, tarkistetaan että se vastaa valitun projektin id:tä
+    const isInSelectedProject = !event.projectId || event.projectId === selectedProject?.id;
+    
+    return isInSelectedMonth && isInSelectedProject;
   });
 
   return (

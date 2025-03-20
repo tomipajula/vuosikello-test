@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 
-const EventForm = ({ events, setEvents, categories, setCategories, categoryColors }) => {
+const EventForm = ({ events, setEvents, categories, setCategories, categoryColors, selectedProject, handleDeleteProject }) => {
   const [newEvent, setNewEvent] = useState({
     startDate: "",
     endDate: "",
@@ -41,14 +41,37 @@ const EventForm = ({ events, setEvents, categories, setCategories, categoryColor
     margin: "0 auto"
   };
 
-  const addEvent = () => {
-    // Tarkistetaan, että pakolliset kentät on täytetty
-    if (!newEvent.name || !newEvent.category || !newEvent.startDate || !newEvent.endDate) {
-      alert("Täytä kaikki pakolliset kentät (nimi, kategoria, alkupäivä ja loppupäivä)");
+  const deleteButtonStyle = {
+    padding: "10px 20px",
+    backgroundColor: "#d62728", // punainen - värisokeusystävällinen
+    color: "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    fontSize: "14px",
+    marginTop: "40px"
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Tarkista, että päivämäärät ovat oikein
+    if (new Date(newEvent.startDate) > new Date(newEvent.endDate)) {
+      alert("Lopetuspäivämäärä ei voi olla ennen aloituspäivämäärää");
       return;
     }
+
+    // Luo uusi tapahtuma
+    const eventWithDate = {
+      ...newEvent,
+      addedDate: new Date().toISOString(),
+      projectId: selectedProject?.id // Lisätään projektin ID tapahtumaan
+    };
+
+    // Lisää tapahtuma listaan
+    setEvents([...events, eventWithDate]);
     
-    setEvents([...events, newEvent]);
+    // Tyhjennä lomake
     setNewEvent({ startDate: "", endDate: "", category: "", name: "", details: "" });
   };
 
@@ -62,7 +85,7 @@ const EventForm = ({ events, setEvents, categories, setCategories, categoryColor
       margin: "0 20px"
     }}>
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
-        <h2 style={{ marginBottom: "30px" }}>Lisää uusi tapahtuma</h2>
+        <h2 style={{ marginBottom: "30px" }}>Muokkaa</h2>
 
         {/* Kategorioiden hallinta */}
         <div style={{
@@ -251,7 +274,7 @@ const EventForm = ({ events, setEvents, categories, setCategories, categoryColor
           </div>
 
           <button
-            onClick={addEvent}
+            onClick={handleSubmit}
             style={{
               ...addButtonStyle,
               gridColumn: "span 2",
@@ -260,7 +283,34 @@ const EventForm = ({ events, setEvents, categories, setCategories, categoryColor
               marginTop: "10px"
             }}
           >
-            Lisää tapahtuma
+            Tallenna
+          </button>
+        </div>
+        
+        {/* Projektin poistaminen */}
+        <div style={{
+          marginTop: "60px",
+          borderTop: "1px solid #eee",
+          paddingTop: "40px"
+        }}>
+          <h3 style={{ 
+            marginBottom: "20px", 
+            color: "#d62728" 
+          }}>
+            Projektin poistaminen
+          </h3>
+          <p style={{ 
+            marginBottom: "20px", 
+            color: "#666",
+            fontSize: "14px"
+          }}>
+            Tämä toiminto poistaa projektin ja kaikki siihen liittyvät tapahtumat pysyvästi. Toimintoa ei voi peruuttaa.
+          </p>
+          <button
+            onClick={handleDeleteProject}
+            style={deleteButtonStyle}
+          >
+            Poista projekti
           </button>
         </div>
       </div>
