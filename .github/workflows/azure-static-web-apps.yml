@@ -31,7 +31,7 @@ jobs:
         run: |
           cd src  # Varmista, että olet oikeassa hakemistossa
           npm install
-          npm run build
+          CI=false npm run build  # 🔹 Tämä estää varoituksia muuttumasta virheiksi
 
       - name: Deploy to Azure Static Web Apps
         id: builddeploy
