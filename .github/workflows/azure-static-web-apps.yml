@@ -26,9 +26,9 @@ jobs:
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          app_location: "/"              # Sijainti missä React-sovellus on (tässä tapauksessa juuressa)
+          app_location: "/"              # Sovellus on tässä hakemistossa
           output_location: "build"       # Build-kansion sijainti
-          skip_app_build: false          # Haluamme buildaa sovelluksen
+          skip_app_build: false          # Buildaa sovellus
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
