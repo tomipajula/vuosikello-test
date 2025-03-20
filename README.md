@@ -48,4 +48,6 @@ Tuotantoversio luodaan `build`-kansioon.
   - `services/`: Palvelut ja rajapinnat
   - `styles/`: CSS-tyylitiedostot
   - `App.js`: Sovelluksen pääkomponentti
-  - `index.js`: Sovelluksen käynnistyspiste 
+  - `index.js`: Sovelluksen käynnistyspiste
+
+    Test
