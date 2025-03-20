@@ -31,8 +31,6 @@ jobs:
           output_location: "build"       # Build-kansion sijainti
           app_build_command: "npm install && npm run build"  # Eksplisiittinen build-komento
           skip_app_build: false          # Buildaa sovellus
-          # Osoitetaan Azure-resurssiryhmä ja tilaus
-          resource_group_name: "RgTomiP"
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
