@@ -102,43 +102,6 @@ const App = () => {
     "Yhteiset tapahtumat": "#d62728" // punainen - värisokeusystävällinen
   });
 
-  // Päivitetään kategorioiden hallintaa
-  const updateCategories = (newCategories) => {
-    // Tarkistetaan, onko uusia kategorioita
-    const newCategoryColors = {...categoryColors};
-    let colorIndex = Object.keys(categoryColors).length;
-    
-    newCategories.forEach(category => {
-      if (!newCategoryColors[category]) {
-        // Määritellään uusi väri kategorialle
-        newCategoryColors[category] = colorPalette[colorIndex % colorPalette.length];
-        colorIndex++;
-      }
-    });
-    
-    // Päivitetään tilat
-    setCategories(newCategories);
-    setCategoryColors(newCategoryColors);
-    
-    // Tallennetaan kategoriat projektikohtaisesti local storageen
-    if (selectedProject) {
-      // Päivitetään projektin kategoriat
-      const updatedProject = {
-        ...selectedProject,
-        categories: newCategories
-      };
-      
-      // Päivitetään valittu projekti
-      setSelectedProject(updatedProject);
-      
-      // Tallennetaan päivitetty projekti local storageen
-      localStorage.setItem('selectedProject', JSON.stringify(updatedProject));
-      
-      // Tallennetaan projektin kategoriat erikseen
-      localStorage.setItem(`categories_${selectedProject.id}`, JSON.stringify(newCategories));
-    }
-  };
-
   useEffect(() => {
     // Käynnistä muistutusten tarkistus
     startReminderCheck();
@@ -156,7 +119,8 @@ const App = () => {
         
         if (savedProjectJson) {
           const project = JSON.parse(savedProjectJson);
-          await useSelectedProject(project);
+          // Kutsutaan setSelectedProject ja muita funktioita sen sijaan että kutsutaan useSelectedProject-funktiota
+          await selectProject(project);
         }
       } catch (error) {
         console.error('Virhe projektin latauksessa:', error);
@@ -164,10 +128,10 @@ const App = () => {
     };
     
     loadSelectedProject();
-  }, []);
+  }, [selectedProject]);
 
   // Valitsee projektin ja lataa sen tapahtumat ja kategoriat
-  const useSelectedProject = async (project) => {
+  const selectProject = async (project) => {
     try {
       setSelectedProject(project);
       
@@ -334,7 +298,7 @@ const App = () => {
 
   // Jos näytetään projektivalitsija, piilotetaan varsinainen sovellus
   if (showProjectSelector) {
-    return <ProjectSelector onSelectProject={useSelectedProject} />;
+    return <ProjectSelector onSelectProject={selectProject} />;
   }
 
   return (
