@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProjectForm from './ProjectForm';
+import { getProjects, saveProjects } from '../services/cosmosDbService';
 
 /**
  * ProjectSelector-komponentti
@@ -8,25 +9,50 @@ import ProjectForm from './ProjectForm';
  * Sisältää myös hakutoiminnon projektien suodattamiseen.
  */
 const ProjectSelector = ({ onSelectProject }) => {
-  // Haetaan projektilista local storagesta tai käytetään oletuslistaa
-  const [projects, setProjects] = useState(() => {
-    const savedProjects = localStorage.getItem('projects');
-    return savedProjects ? JSON.parse(savedProjects) : [
-      { id: 1, name: "Markkinointiprojekti 2025", description: "Markkinoinnin vuosisuunnitelma ja tapahtumat" },
-      { id: 2, name: "Tuotekehitys Q1-Q2/2025", description: "Tuotekehityksen aikataulu ja virstanpylväät" },
-      { id: 3, name: "Henkilöstöhallinto 2025", description: "HR-tapahtumat ja koulutukset" },
-      { id: 4, name: "Myyntistrategia 2025", description: "Myynnin tapahtumat ja tavoitteet" },
-      { id: 5, name: "IT-infrastruktuuri 2025", description: "IT-järjestelmien päivitykset ja huollot" }
-    ];
-  });
+  // Haetaan projektilista tietokannasta
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // Hakutoiminto
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredProjects, setFilteredProjects] = useState(projects);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   const [hoveredProjectId, setHoveredProjectId] = useState(null);
   
   // Projektin luominen
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+  // Haetaan projektit tietokannasta
+  useEffect(() => {
+    const fetchProjects = async () => {
+      try {
+        setLoading(true);
+        let projects = await getProjects();
+        
+        // Jos projekteja ei löydy, luodaan oletusprojektit
+        if (projects.length === 0) {
+          const defaultProjects = [
+            { id: "1", name: "Markkinointiprojekti 2025", description: "Markkinoinnin vuosisuunnitelma ja tapahtumat" },
+            { id: "2", name: "Tuotekehitys Q1-Q2/2025", description: "Tuotekehityksen aikataulu ja virstanpylväät" },
+            { id: "3", name: "Henkilöstöhallinto 2025", description: "HR-tapahtumat ja koulutukset" },
+            { id: "4", name: "Myyntistrategia 2025", description: "Myynnin tapahtumat ja tavoitteet" },
+            { id: "5", name: "IT-infrastruktuuri 2025", description: "IT-järjestelmien päivitykset ja huollot" }
+          ];
+          
+          // Tallennetaan oletusprojektit tietokantaan
+          projects = await saveProjects(defaultProjects);
+        }
+        
+        setProjects(projects);
+        setFilteredProjects(projects);
+      } catch (error) {
+        console.error("Virhe projektien haussa:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProjects();
+  }, []);
 
   // Päivitä suodatetut projektit kun hakutermi muuttuu
   useEffect(() => {
@@ -37,25 +63,24 @@ const ProjectSelector = ({ onSelectProject }) => {
     setFilteredProjects(results);
   }, [searchTerm, projects]);
   
-  // Tallenna projektit local storageen kun ne muuttuvat
-  useEffect(() => {
-    localStorage.setItem('projects', JSON.stringify(projects));
-  }, [projects]);
-  
   // Käsittele uuden projektin tallennus
-  const handleSaveProject = (newProject) => {
-    // Lisää uusi projekti listaan
-    const updatedProjects = [...projects, newProject];
-    setProjects(updatedProjects);
-    
-    // Tallenna projektit local storageen
-    localStorage.setItem('projects', JSON.stringify(updatedProjects));
-    
-    // Valitse uusi projekti
-    onSelectProject(newProject);
-    
-    // Sulje lomake
-    setIsCreatingProject(false);
+  const handleSaveProject = async (newProject) => {
+    try {
+      // Tallenna uusi projekti
+      const savedProjects = await saveProjects([...projects, newProject]);
+      
+      // Päivitä projektilistaus
+      setProjects(savedProjects);
+      
+      // Valitse uusi projekti
+      const savedProject = savedProjects.find(p => p.id === newProject.id || p.name === newProject.name);
+      onSelectProject(savedProject || newProject);
+      
+      // Sulje lomake
+      setIsCreatingProject(false);
+    } catch (error) {
+      console.error("Virhe projektin tallennuksessa:", error);
+    }
   };
 
   // Jos käyttäjä on luomassa uutta projektia, näytä projektin luomislomake
@@ -65,6 +90,16 @@ const ProjectSelector = ({ onSelectProject }) => {
         onSave={handleSaveProject} 
         onCancel={() => setIsCreatingProject(false)} 
       />
+    );
+  }
+
+  // Jos projekteja ladataan, näytä latausilmoitus
+  if (loading) {
+    return (
+      <div style={styles.container}>
+        <h1 style={styles.title}>Vuosikello</h1>
+        <p style={styles.loading}>Ladataan projekteja...</p>
+      </div>
     );
   }
 
@@ -84,125 +119,104 @@ const ProjectSelector = ({ onSelectProject }) => {
         />
       </div>
       
-      <div style={styles.projectList}>
-        {filteredProjects.length > 0 ? (
-          filteredProjects.map(project => (
-            <div 
-              key={project.id} 
-              style={{
-                ...styles.projectCard,
-                ...(hoveredProjectId === project.id ? styles.projectCardHover : {})
-              }}
-              onClick={() => onSelectProject(project)}
-              onMouseEnter={() => setHoveredProjectId(project.id)}
-              onMouseLeave={() => setHoveredProjectId(null)}
-            >
-              <h3 style={styles.projectName}>{project.name}</h3>
-              <p style={styles.projectDescription}>{project.description}</p>
-            </div>
-          ))
-        ) : (
-          <div style={styles.noResults}>
-            Ei hakutuloksia. Kokeile toista hakutermiä.
+      <div style={styles.projectsContainer}>
+        {filteredProjects.map(project => (
+          <div
+            key={project.id}
+            style={{
+              ...styles.projectCard,
+              ...(hoveredProjectId === project.id ? styles.projectCardHover : {})
+            }}
+            onClick={() => onSelectProject(project)}
+            onMouseEnter={() => setHoveredProjectId(project.id)}
+            onMouseLeave={() => setHoveredProjectId(null)}
+          >
+            <h3 style={styles.projectName}>{project.name}</h3>
+            <p style={styles.projectDescription}>{project.description}</p>
           </div>
-        )}
-      </div>
-      
-      <div style={styles.createNewProject}>
-        <button 
-          style={styles.newProjectButton}
+        ))}
+        
+        <div
+          style={{
+            ...styles.projectCard,
+            ...styles.newProjectCard,
+            ...(hoveredProjectId === "new" ? styles.projectCardHover : {})
+          }}
           onClick={() => setIsCreatingProject(true)}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#45a049'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#4CAF50'}
+          onMouseEnter={() => setHoveredProjectId("new")}
+          onMouseLeave={() => setHoveredProjectId(null)}
         >
-          + Luo uusi projekti
-        </button>
+          <h3 style={styles.projectName}>+ Uusi projekti</h3>
+          <p style={styles.projectDescription}>Luo uusi vuosikellokokonaisuus</p>
+        </div>
       </div>
     </div>
   );
 };
 
-// Tyylit
 const styles = {
   container: {
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '40px 20px',
-    textAlign: 'center'
+    padding: "20px",
+    maxWidth: "800px",
+    margin: "0 auto",
+    fontFamily: "Arial, sans-serif"
   },
   title: {
-    fontSize: '2.5rem',
-    marginBottom: '10px',
-    color: '#333'
+    textAlign: "center",
+    color: "#333",
+    marginBottom: "10px"
   },
   subtitle: {
-    fontSize: '1.5rem',
-    marginBottom: '30px',
-    color: '#666',
-    fontWeight: 'normal'
+    textAlign: "center",
+    color: "#666",
+    fontWeight: "normal",
+    marginBottom: "30px"
   },
   searchContainer: {
-    marginBottom: '30px'
+    marginBottom: "30px"
   },
   searchInput: {
-    width: '100%',
-    padding: '12px 20px',
-    fontSize: '16px',
-    borderRadius: '30px',
-    border: '1px solid #ddd',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-    outline: 'none'
+    width: "100%",
+    padding: "10px",
+    fontSize: "16px",
+    border: "1px solid #ddd",
+    borderRadius: "4px",
+    boxSizing: "border-box"
   },
-  projectList: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: '20px',
-    marginBottom: '30px'
+  projectsContainer: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+    gap: "20px"
   },
   projectCard: {
-    backgroundColor: 'white',
-    borderRadius: '10px',
-    padding: '20px',
-    boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
-    cursor: 'pointer',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    textAlign: 'left',
-    border: '1px solid #eee'
+    padding: "20px",
+    borderRadius: "4px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    backgroundColor: "#fff",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    cursor: "pointer"
   },
   projectCardHover: {
-    transform: 'translateY(-5px)',
-    boxShadow: '0 5px 15px rgba(0,0,0,0.1)'
+    transform: "translateY(-5px)",
+    boxShadow: "0 5px 15px rgba(0,0,0,0.2)"
+  },
+  newProjectCard: {
+    backgroundColor: "#f9f9f9",
+    border: "2px dashed #ddd"
   },
   projectName: {
-    fontSize: '1.2rem',
-    marginBottom: '10px',
-    color: '#333'
+    margin: "0 0 10px 0",
+    color: "#333"
   },
   projectDescription: {
-    fontSize: '0.9rem',
-    color: '#666',
-    marginBottom: '0'
+    margin: "0",
+    color: "#666",
+    fontSize: "14px"
   },
-  noResults: {
-    gridColumn: '1 / -1',
-    padding: '30px',
-    backgroundColor: '#f9f9f9',
-    borderRadius: '10px',
-    color: '#666'
-  },
-  createNewProject: {
-    marginTop: '20px'
-  },
-  newProjectButton: {
-    backgroundColor: '#4CAF50',
-    color: 'white',
-    border: 'none',
-    padding: '12px 24px',
-    borderRadius: '30px',
-    fontSize: '16px',
-    cursor: 'pointer',
-    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
-    transition: 'background-color 0.2s'
+  loading: {
+    textAlign: "center",
+    color: "#666",
+    fontSize: "16px"
   }
 };
 

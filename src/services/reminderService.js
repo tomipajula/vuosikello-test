@@ -2,57 +2,69 @@
  * ReminderService - Muistutusten hallinta- ja lähetyspalvelu
  * 
  * Tämä palvelu käsittelee muistutusten tallennuksen, haun ja lähetyksen.
- * Palvelu on suunniteltu niin, että tietokantayhteyden lisääminen on helppoa.
- * Tällä hetkellä käytetään local storagea, mutta tietokantayhteyden lisääminen
- * onnistuu vaihtamalla metodien toteutus.
+ * Palvelu käyttää Cosmos DB:tä tietojen tallentamiseen.
  */
 
 import { send as sendEmail } from './emailService';
+import { 
+  getReminders as getRemindersFromDb,
+  saveReminders as saveRemindersToDb,
+  addReminder as addReminderToDb,
+  deleteReminder as deleteReminderFromDb
+} from './cosmosDbService';
 
-// Tämä on väliaikainen toteutus local storagella
-// Kun tietokanta lisätään, tämä vaihdetaan tietokantakutsulla
-const getReminders = () => {
-  return JSON.parse(localStorage.getItem('reminders') || '[]');
+// Hakee muistutukset tietokannasta
+const getReminders = async () => {
+  try {
+    return await getRemindersFromDb();
+  } catch (error) {
+    console.error("Virhe muistutusten haussa:", error);
+    return [];
+  }
 };
 
-const saveReminders = (reminders) => {
-  localStorage.setItem('reminders', JSON.stringify(reminders));
+// Tallentaa muistutukset tietokantaan
+const saveReminders = async (reminders) => {
+  try {
+    return await saveRemindersToDb(reminders);
+  } catch (error) {
+    console.error("Virhe muistutusten tallennuksessa:", error);
+    return reminders; // Palautetaan alkuperäiset muistutukset virheen sattuessa
+  }
 };
 
-// Tämä on väliaikainen toteutus
-// Kun tietokanta lisätään, tämä vaihdetaan tietokantakutsulla
-const addReminder = (reminder) => {
-  const reminders = getReminders();
-  reminders.push(reminder);
-  saveReminders(reminders);
-  return reminder;
+// Lisää uuden muistutuksen
+const addReminder = async (reminder) => {
+  try {
+    // Lisää id-kenttä, jos sitä ei ole
+    if (!reminder.id) {
+      reminder.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    }
+    
+    return await addReminderToDb(reminder);
+  } catch (error) {
+    console.error("Virhe muistutuksen lisäyksessä:", error);
+    return reminder; // Palautetaan alkuperäinen muistutus virheen sattuessa
+  }
 };
 
-// Tämä on väliaikainen toteutus
-// Kun tietokanta lisätään, tämä vaihdetaan tietokantakutsulla
-const deleteReminder = (reminderId) => {
-  const reminders = getReminders();
-  const updatedReminders = reminders.filter(r => r.eventId !== reminderId);
-  saveReminders(updatedReminders);
-};
-
-// Tämä on väliaikainen toteutus
-// Kun tietokanta lisätään, tämä vaihdetaan tietokantakutsulla
-const getRemindersByEmail = (email) => {
-  const reminders = getReminders();
-  return reminders.filter(r => r.email === email);
-};
-
-// Tämä on väliaikainen toteutus
-// Kun tietokanta lisätään, tämä vaihdetaan tietokantakutsulla
-const getRemindersByEventId = (eventId) => {
-  const reminders = getReminders();
-  return reminders.filter(r => r.eventId === eventId);
+// Poistaa muistutuksen
+const deleteReminder = async (eventId) => {
+  try {
+    const reminders = await getReminders();
+    const reminder = reminders.find(r => r.eventId === eventId);
+    
+    if (reminder) {
+      await deleteReminderFromDb(reminder.id, eventId);
+    }
+  } catch (error) {
+    console.error(`Virhe muistutuksen poistossa (eventId: ${eventId}):`, error);
+  }
 };
 
 // Tarkistaa muistutukset ja lähettää sähköpostit
 const checkAndSendReminders = async () => {
-  const reminders = getReminders();
+  const reminders = await getReminders();
   const now = new Date();
   
   for (const reminder of reminders) {
@@ -63,7 +75,7 @@ const checkAndSendReminders = async () => {
       try {
         await sendReminderEmail(reminder);
         // Poista lähetetty muistutus
-        deleteReminder(reminder.eventId);
+        await deleteReminder(reminder.eventId);
       } catch (error) {
         console.error('Virhe muistutuksen lähetyksessä:', error);
       }
@@ -83,23 +95,21 @@ const sendReminderEmail = async (reminder) => {
   });
 };
 
-// Käynnistää muistutusten tarkistuksen
+// Muistutusten tarkistuksen käynnistys
 const startReminderCheck = () => {
-  // Tarkista muistutukset minuutin välein
-  const checkInterval = 60 * 1000;
+  // Tarkistetaan muistutukset minuutin välein
+  setInterval(async () => {
+    await checkAndSendReminders();
+  }, 60000);
   
-  // Tarkista heti käynnistyksessä
+  // Tarkistetaan muistutukset heti sovelluksen käynnistyessä
   checkAndSendReminders();
-  
-  // Aseta minuutittainen tarkistus
-  setInterval(checkAndSendReminders, checkInterval);
 };
 
 export {
   getReminders,
+  saveReminders,
   addReminder,
   deleteReminder,
-  getRemindersByEmail,
-  getRemindersByEventId,
   startReminderCheck
 }; 
