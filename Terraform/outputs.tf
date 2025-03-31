@@ -1,12 +1,16 @@
-output "static_web_app_url" {
-  value       = azurerm_static_site.web.default_host_name
-  description = "Static Web App URL"
+output "web_app_url" {
+  value       = "https://${azurerm_linux_web_app.web.default_hostname}"
+  description = "Web App URL"
 }
 
-output "static_web_app_api_key" {
-  value       = azurerm_static_site.web.api_key
-  sensitive   = true
-  description = "Static Web App API Key - tarvitaan CI/CD-putkessa"
+output "web_app_name" {
+  value       = azurerm_linux_web_app.web.name
+  description = "Web App -palvelun nimi"
+}
+
+output "app_service_plan_id" {
+  value       = azurerm_service_plan.asp.id
+  description = "App Service Plan ID"
 }
 
 output "cosmos_db_endpoint" {

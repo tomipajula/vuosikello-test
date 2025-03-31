@@ -9,8 +9,8 @@ variables:
   value: 'tfstate'
 - name: 'TF_BACKEND_STATE_FILE_NAME'
   value: 'terraform.tfstate'
-- name: 'STATIC_WEB_APP_NAME'
-  value: 'Vuosikello' # Korvaa oikealla Static Web App -nimellä
+- name: 'WEB_APP_NAME'
+  value: 'Vuosikello' # Korvaa oikealla Web App -nimellä
 - name: 'TF_BACKEND_SA_NAME'
   value: 'sa01a132827b4e10sandbox' # Korvaa oikealla Storage Account -nimellä
 # Tämä arvo tulee määrittää Azure DevOps pipeline-muuttujissa

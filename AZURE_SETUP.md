@@ -1,61 +1,107 @@
-# Azure Static Web Apps -asetukset
+# Azure Web App & Terraform -käyttöönotto
 
-Kun määrität Azure Static Web Apps -sovelluksen Azure-portaalissa, käytä seuraavia asetuksia:
+Tämä dokumentti sisältää ohjeet Vuosikello-sovelluksen käyttöönottoon Azure-ympäristössä sekä manuaalisesti että automaattisesti Terraformin ja Azure DevOps -pipelineiden avulla.
 
-## Perusasetukset
+## Vaihtoehto 1: Automaattinen käyttöönotto Terraformilla ja Azure DevOps -pipelinella
+
+Suositeltava tapa ottaa sovellus käyttöön on Azure DevOps -pipeline, joka käyttää Terraformia infrastruktuurin hallintaan.
+
+### Vaatimukset
+- Azure DevOps -projekti
+- Azure-tilaus 
+- Olemassa oleva resurssiryhmä: RgVuosikello
+- Azure Storage Account Terraform-tilan säilyttämiseen
+
+### Käyttöönotto
+1. Luo Service Connection Azure DevOpsiin Azure-tilaukseen
+2. Määritä pipeline-muuttujat:
+   - Käytä variable group -ryhmää nimeltä `VuosikelloVariables`
+   - Tärkeimmät muuttujat on määritetty tiedostossa `pipelines/terraform/templates/template-variables.yml`
+3. Suorita pipeline `pipelines/terraform/pipeline.yml`
+
+## Vaihtoehto 2: Manuaalinen käyttöönotto Terraformilla
+
+Voit käyttää Terraformia suoraan paikallisesta ympäristöstä.
+
+### Vaatimukset
+- [Terraform](https://www.terraform.io/downloads.html) (versio >= 1.11.0)
+- [Azure CLI](https://docs.microsoft.com/fi-fi/cli/azure/install-azure-cli)
+- Kirjautuminen Azure-tiliin (`az login`)
+
+### Käyttöönotto
+1. Siirry Terraform-hakemistoon: `cd Terraform/`
+2. Alusta Terraform-ympäristö:
+   ```bash
+   terraform init -backend-config="resource_group_name=RgVuosikello" \
+     -backend-config="storage_account_name=sa01a132827b4e10sandbox" \
+     -backend-config="container_name=tfstate" \
+     -backend-config="key=terraform.tfstate" \
+     -backend-config="use_azuread_auth=true"
+   ```
+3. Luo Terraform-suunnitelma: `terraform plan -out=tfplan`
+4. Suorita suunnitelma: `terraform apply tfplan`
+
+Katso tarkemmat ohjeet tiedostosta `Terraform/README.terraform.md`.
+
+## Vaihtoehto 3: Manuaalinen käyttöönotto Azure-portaalissa
+
+Jos haluat määrittää sovelluksen manuaalisesti Azure-portaalissa, käytä seuraavia asetuksia:
+
+### 1. App Service Plan -luonti
+- **Resurssiryhmä**: RgVuosikello
+- **Nimi**: VuosikelloASP (tai haluamasi nimi)
+- **Käyttöjärjestelmä**: Linux
+- **Hintataso**: B1 tai korkeampi tuotantoympäristöön
+- **Sijainti**: West Europe
+
+### 2. Web App -luonti
 - **Resurssiryhmä**: RgVuosikello
 - **Nimi**: Vuosikello (tai haluamasi nimi)
-- **Hosting-suunnitelma**: Free
-- **Azure Functions ja staging-ympäristö**: Ei tarvita
+- **App Service Plan**: Valitse aiemmin luotu plan
+- **Runtime stack**: Node 18 LTS
+- **Sijainti**: West Europe (sama kuin App Service Planilla)
 
-## Lähdekoodi-integraatio
-- **Deployment source**: GitHub
-- **Organization**: tomipajula
-- **Repository**: vuosikello
-- **Branch**: master
+### 3. Cosmos DB -luonti
+- **Resurssiryhmä**: RgVuosikello
+- **Tili**: vuosikello-cosmos (tai haluamasi nimi)
+- **API**: Core (SQL)
+- **Tietokantatyyppi**: serverless
+- **Tietokanta**: vuosikellodb
+- **Containerit**:
+  - events (partition key: /id)
+  - projects (partition key: /id)
 
-## Build-asetukset
-- **Build presets**: React
-- **App location**: `/vuosikello` (vuosikello-kansio)
-- **Api location**: _(jätä tyhjäksi)_
-- **Output location**: `build`
+### 4. App Settings Web Appiin
+Lisää seuraavat sovellusasetukset Web Appiin:
+- **COSMOS_DB_ENDPOINT**: Cosmos DB -tilin endpoint URL
+- **COSMOS_DB_KEY**: Cosmos DB -tilin primary key
+- **COSMOS_DB_DATABASE**: Cosmos DB -tietokannan nimi (esim. "vuosikellodb")
 
 ## Yleisimmät ongelmat ja ratkaisut
 
-### 1. Useita workflow-tiedostoja
-Jos repositoriossa on useita Azure Static Web Apps workflow -tiedostoja, poista kaikki paitsi yksi (`azure-static-web-apps.yml`). Katso tarkemmat ohjeet `WORKFLOW_CLEANUP.md`-tiedostosta.
+### 1. Web App -deployaus
+Jos sovelluksen deployaus epäonnistuu, varmista että:
+- Web.config-tiedosto on olemassa ja konfiguroitu oikein
+- App Service on määritetty käyttämään Node.js 18 LTS -versiota
+- Sovellus on buildattu ennen deployausta: `npm run build`
 
-### 2. App location -virhe
-Jos saat virheilmoituksen "App Directory Location: '/vuosikello' is invalid", varmista että:
-- App location -arvo on `/vuosikello` (Azuressa) tai `vuosikello` (workflow-tiedostossa)
-- Workflow-tiedostossa on oikea app_location-arvo (`"vuosikello"`)
-
-### 3. Build-ongelmat
-Jos build-prosessi epäonnistuu, varmista että workflow-tiedostossa on määritetty:
-```yaml
-app_location: "vuosikello"      # React-sovellus on vuosikello-kansiossa
-output_location: "build"        # Build-kansion sijainti suhteessa app_location-arvoon
-skip_app_build: false           # Buildaa sovellus
+### 2. Terraform-tilan tallennus
+Jos Azure AD -autentikointi ei toimi, voit käyttää access key -autentikointia:
+```bash
+terraform init -backend-config="access_key=STORAGE_ACCOUNT_ACCESS_KEY" ...
 ```
 
-### 4. Riippuvuusongelmat (Module not found)
-Jos törmäät virheilmoitukseen "Module not found: Error: Can't resolve 'd3'":
-1. Varmista että d3-kirjasto on lisätty vuosikello/package.json-tiedostoon:
-```json
-"dependencies": {
-  // ... muut riippuvuudet ...
-  "d3": "^7.9.0",
-  // ... muut riippuvuudet ...
-}
-```
-2. Käytä luotettavampaa npm ci -komentoa npm install -komennon sijaan build-vaiheessa.
+### 3. CORS-ongelmat
+Jos kohtaat CORS-ongelmia sovelluksessa:
+- Varmista että Cosmos DB:n CORS-asetukset sallivat pyynnöt Web Appista
+- Tarkista että Azure Web Appin CORS-asetukset ovat kunnossa
 
-### 5. API-avainvirhe
-Jos saat virheilmoituksen "No matching Static Web App was found or the api key was invalid":
-1. Mene Azure-portaalissa Static Web App -resurssiin
-2. Valitse "Manage deployment token"
-3. Kopioi token
-4. Päivitä GitHub-repositorion salaisuudet (Settings > Secrets > Actions)
-5. Lisää/päivitä salaisuus nimeltä `AZURE_STATIC_WEB_APPS_API_TOKEN`
+### 4. 404-virheet sovelluksessa
+Jos sovellus antaa 404-virheitä reitityksessä:
+- Varmista että web.config-tiedosto on määritetty oikein ohjaamaan kaikki pyynnöt juureen (SPA-sovellus)
+- Tarkista että URL Rewrite -moduuli on käytössä App Servicessä
+
+### 5. Sykliset riippuvuudet Terraformissa
+Jos Terraform valittaa syklisistä riippuvuuksista, käytä `depends_on`-määrittelyä krittisissä resursseissa.
 
 Nämä asetukset varmistavat, että Azure osaa buildaa ja julkaista vuosikello-sovelluksen oikein. 

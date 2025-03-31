@@ -3,27 +3,48 @@ data "azurerm_resource_group" "rg" {
   name = var.resource_group_name
 }
 
-# Static Web App
-resource "azurerm_static_web_app" "web" {
-  name                = var.static_web_app_name
+# App Service Plan -määritys web-sovellusta varten
+resource "azurerm_service_plan" "asp" {
+  name                = var.app_service_plan_name
   resource_group_name = data.azurerm_resource_group.rg.name
-  location            = data.azurerm_resource_group.rg.location
-  sku_tier            = var.sku_tier
-  sku_size            = var.sku_size
+  location            = var.location
+  os_type             = "Linux"
+  sku_name            = var.app_service_plan_sku
+}
+
+# Linux Web App -määritys (aiemmin Static Web App)
+resource "azurerm_linux_web_app" "web" {
+  name                = var.web_app_name
+  resource_group_name = data.azurerm_resource_group.rg.name
+  location            = var.location
+  service_plan_id     = azurerm_service_plan.asp.id
+
+  site_config {
+    application_stack {
+      node_version = "18-lts"
+    }
+    always_on = true
+  }
 
   app_settings = {
     COSMOS_DB_ENDPOINT = azurerm_cosmosdb_account.db.endpoint
     COSMOS_DB_KEY      = azurerm_cosmosdb_account.db.primary_key
     COSMOS_DB_DATABASE = azurerm_cosmosdb_sql_database.database.name
+    WEBSITE_NODE_DEFAULT_VERSION = "~18"
   }
 
   tags = {
     environment = "sandbox"
     project     = "vuosikello"
   }
+
+  depends_on = [
+    azurerm_cosmosdb_account.db,
+    azurerm_cosmosdb_sql_database.database
+  ]
 }
 
-# Azure Cosmos DB Account
+# Azure Cosmos DB Account (korjattu CORS-asetukset)
 resource "azurerm_cosmosdb_account" "db" {
   name                = var.cosmos_db_account_name
   location            = data.azurerm_resource_group.rg.location
@@ -46,9 +67,9 @@ resource "azurerm_cosmosdb_account" "db" {
     name = "EnableServerless"
   }
 
-  # Lisätään CORS-asetukset
+  # CORS-asetukset Web Appia varten
   cors_rule {
-    allowed_origins    = [azurerm_static_web_app.web.default_host_name]
+    allowed_origins    = ["*"] # Voidaan päivittää myöhemmin tarkemmaksi
     exposed_headers    = ["*"]
     allowed_headers    = ["*"]
     allowed_methods    = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]

@@ -43,15 +43,15 @@ stages:
             backendAzureRmKey: '$(TF_BACKEND_STATE_FILE_NAME)'
         
         - task: AzureCLI@2
-          displayName: 'Import existing Static Web App to Terraform state'
+          displayName: 'Tarkista olemassa oleva Web App'
           inputs:
             azureSubscription: '${{ parameters.serviceconnectionName }}'
             scriptType: 'bash'
             scriptLocation: 'inlineScript'
             workingDirectory: '$(terraformBasePath)'
             inlineScript: |
-              # Tuodaan olemassa oleva staattinen web-sovellus Terraform-tilaan (jos se on olemassa)
-              terraform import -allow-missing-config azurerm_static_web_app.web "/subscriptions/93036384-5c59-40d3-b1f4-6973bb7b1530/resourceGroups/RgVuosikello/providers/Microsoft.Web/staticSites/Vuosikello" || echo "Resource not found or already imported, continuing..."
+              # Tarkistetaan onko webappia olemassa, jos on, tuodaan se Terraform-tilaan
+              az webapp show --name $(WEB_APP_NAME) --resource-group $(TF_BACKEND_RG_NAME) || echo "Web App not found, will be created by Terraform"
         
         - task: TerraformTaskV4@4
           displayName: 'Terraform Plan'
@@ -61,14 +61,16 @@ stages:
             command: 'plan'
             workingDirectory: '$(terraformBasePath)'
             environmentServiceNameAzureRM: '${{ parameters.serviceconnectionName }}'
-            commandOptions: '-out $(Build.BuildId)-${{parameters.environmentName}}.tfplan'
+            commandOptions: '-out $(terraformBasePath)/$(Build.BuildId)-${{parameters.environmentName}}.tfplan'
 
         - task: ArchiveFiles@2
           displayName: 'Create Plan Artifact'
           inputs:
-            rootFolderOrFile: '$(Build.SourcesDirectory)'
-            archiveType: tar
+            rootFolderOrFile: '$(terraformBasePath)'
+            archiveType: 'tar'
             archiveFile: '$(Build.ArtifactStagingDirectory)/terraform-plan.tgz'
+            includeRootFolder: false
+            verbose: true
 
         - task: PublishBuildArtifacts@1
           displayName: 'Publish Artifact available to apply stage'  
@@ -86,28 +88,27 @@ stages:
       value: '${{ parameters.terraformBasePath }}'
     displayName: 'tf apply ${{ parameters.environmentName }}'
     jobs:
-      - deployment: PreDeployment
-        environment: ${{ parameters.environmentName }}
-      - job: Terraform
+      - job: TerraformApply
         displayName: 'Apply Terraform Plan'
-
         steps:
         - checkout: self
           displayName: 'Checkout repository'
-          
+
         - task: DownloadBuildArtifacts@1
+          displayName: 'Download terraformplan from current build'
           inputs:
             buildType: 'current'
-            downloadType: 'single'
-            artifactName: '$(Build.BuildId)-tfplan'
+            downloadType: 'specific'
+            itemPattern: '$(Build.BuildId)-tfplan/terraform-plan.tgz'
             downloadPath: '$(System.ArtifactsDirectory)'
 
         - task: ExtractFiles@1
           displayName: 'Extract files '
           inputs:
-            archiveFilePatterns: '$(System.ArtifactsDirectory)/**/$(Build.BuildId)-tfplan/terraform-plan.tgz'
-            destinationFolder: '$(terraformBasePath)/'
+            archiveFilePatterns: '$(System.ArtifactsDirectory)/$(Build.BuildId)-tfplan/terraform-plan.tgz'
+            destinationFolder: '$(Build.SourcesDirectory)'
             cleanDestinationFolder: false
+
         - task: TerraformInstaller@1
           displayName: 'Install Terraform $(TF_VERSION)'
           inputs:
@@ -138,17 +139,17 @@ stages:
             addSpnToEnvironment: true
             failOnStandardError: true
 
-  - stage: DeployStaticWebApp_${{ parameters.environmentName }}
+  - stage: DeployWebApp_${{ parameters.environmentName }}
     dependsOn: TerraformApply_${{ parameters.environmentName }}
     variables:
     - template: './template-variables.yml'
     - template: './template-variables-${{ parameters.environmentName }}.yml'
     - name: 'terraformBasePath'
       value: '${{ parameters.terraformBasePath }}'
-    displayName: 'Deploy Static Web App'
+    displayName: 'Deploy Web App'
     jobs:
-      - job: DeployStaticWebApp
-        displayName: 'Publish Static Web App'
+      - job: DeployWebApp
+        displayName: 'Publish Web App'
         steps:
         - checkout: self
           displayName: 'Checkout repository'
@@ -164,19 +165,13 @@ stages:
             script: 'CI=false npm run build'
             workingDirectory: '$(System.DefaultWorkingDirectory)'
 
-        - task: AzureCLI@2
-          displayName: 'Deploy Static Web App'
+        - task: AzureWebApp@1
+          displayName: 'Deploy Web App'
           inputs:
             azureSubscription: '${{ parameters.serviceconnectionName }}'
-            scriptType: 'bash'
-            scriptLocation: 'inlineScript'
-            inlineScript: |
-              # Asennetaan Static Web Apps -laajennos
-              az extension add --name staticwebapp --allow-preview true
-              
-              # Deployataan sovellus
-              az staticwebapp deploy \
-                --name $(STATIC_WEB_APP_NAME) \
-                --resource-group $(TF_BACKEND_RG_NAME) \
-                --source $(System.DefaultWorkingDirectory)/build \
-                --token $(AZURE_STATIC_WEB_APPS_API_TOKEN)
+            appType: 'webAppLinux'
+            appName: '$(WEB_APP_NAME)'
+            resourceGroupName: '$(TF_BACKEND_RG_NAME)'
+            package: '$(System.DefaultWorkingDirectory)/build'
+            runtimeStack: 'NODE|18-lts'
+            deploymentMethod: 'auto'

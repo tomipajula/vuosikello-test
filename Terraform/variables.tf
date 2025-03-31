@@ -10,22 +10,22 @@ variable "location" {
   default     = "westeurope"
 }
 
-variable "static_web_app_name" {
-  description = "Azure Static Web App -palvelun nimi"
+variable "web_app_name" {
+  description = "Azure Web App -palvelun nimi"
   type        = string
   default     = "Vuosikello"
 }
 
-variable "sku_tier" {
-  description = "Static Web App -palvelun hintataso"
+variable "app_service_plan_name" {
+  description = "App Service Plan -palvelun nimi"
   type        = string
-  default     = "Free"
+  default     = "VuosikelloASP"
 }
 
-variable "sku_size" {
-  description = "Static Web App -palvelun koko"
+variable "app_service_plan_sku" {
+  description = "App Service Plan SKU"
   type        = string
-  default     = "Free"
+  default     = "B1"
 }
 
 variable "app_location" {
