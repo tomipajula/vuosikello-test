@@ -1,0 +1,23 @@
+variables:
+- name: 'TF_VERSION'
+  value: '1.11.0' # Replace with the version of Terraform to use
+- name: 'terraformBasePath'
+  value: '$(System.DefaultWorkingDirectory)/Terraform'
+- name: 'TF_BACKEND_RG_NAME'
+  value: 'RgVuosikello' # Korvaa oikealla resurssiryhmän nimellä
+- name: 'TF_BACKEND_CONTAINER_NAME'
+  value: 'tfstate'
+- name: 'TF_BACKEND_STATE_FILE_NAME'
+  value: 'terraform.tfstate'
+- name: 'STATIC_WEB_APP_NAME'
+  value: 'Vuosikello' # Korvaa oikealla Static Web App -nimellä
+- name: 'TF_BACKEND_SA_NAME'
+  value: 'sa01a132827b4e10sandbox' # Korvaa oikealla Storage Account -nimellä
+# Tämä arvo tulee määrittää Azure DevOps pipeline-muuttujissa
+# Löydät tokenin Azure-portaalista Static Web App -resurssista kohdasta "Hallitse deployment token"
+# AZURE_STATIC_WEB_APPS_API_TOKEN-muuttuja kommentoitu pois - se tulee määrittää Azure DevOps pipeline-muuttujissa
+# - name: 'AZURE_STATIC_WEB_APPS_API_TOKEN'
+#   value: '$(AZURE_STATIC_WEB_APPS_API_TOKEN)'
+
+
+

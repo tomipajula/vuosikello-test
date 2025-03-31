@@ -1,0 +1,61 @@
+{
+    "projects": {
+        "properties": {
+            "id": {
+                "type": "string"
+            },
+            "name": {
+                "type": "string"
+            },
+            "description": {
+                "type": "string"
+            },
+            "startDate": {
+                "type": "string",
+                "format": "date-time"
+            },
+            "endDate": {
+                "type": "string",
+                "format": "date-time"
+            },
+            "createdAt": {
+                "type": "string",
+                "format": "date-time"
+            },
+            "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+            }
+        },
+        "required": ["id", "name"]
+    },
+    "events": {
+        "properties": {
+            "id": {
+                "type": "string"
+            },
+            "projectId": {
+                "type": "string"
+            },
+            "title": {
+                "type": "string"
+            },
+            "description": {
+                "type": "string"
+            },
+            "date": {
+                "type": "string",
+                "format": "date-time"
+            },
+            "createdAt": {
+                "type": "string",
+                "format": "date-time"
+            },
+            "updatedAt": {
+                "type": "string",
+                "format": "date-time"
+            }
+        },
+        "required": ["id", "projectId", "title", "date"]
+    }
+} 

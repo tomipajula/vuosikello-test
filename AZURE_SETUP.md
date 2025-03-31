@@ -3,7 +3,7 @@
 Kun määrität Azure Static Web Apps -sovelluksen Azure-portaalissa, käytä seuraavia asetuksia:
 
 ## Perusasetukset
-- **Resurssiryhmä**: RgTomiP
+- **Resurssiryhmä**: RgVuosikello
 - **Nimi**: Vuosikello (tai haluamasi nimi)
 - **Hosting-suunnitelma**: Free
 - **Azure Functions ja staging-ympäristö**: Ei tarvita

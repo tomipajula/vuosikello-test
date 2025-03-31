@@ -1,0 +1,13 @@
+# Terraform muuttujan esimerkkiarvot
+# Muuntaa tämä tiedosto terraform.tfvars -tiedostoksi ja muokkaa arvot tarpeen mukaan
+
+resource_group_name     = "RgVuosikello"
+location                = "westeurope"
+static_web_app_name     = "Vuosikello"
+sku_tier                = "Free"
+sku_size                = "Free"
+app_location            = "vuosikello"
+output_location         = "build"
+api_location            = ""
+cosmos_db_account_name  = "vuosikello-cosmos"
+cosmos_db_database_name = "vuosikellodb" 

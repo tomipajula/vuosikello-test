@@ -1,0 +1,19 @@
+trigger: none
+
+pool:
+  name: Azure Pipelines
+  vmImage: windows-latest
+
+variables:
+  - group: VuosikelloVariables  # Sisältää STATIC_WEB_APP_TOKEN_SANDBOX
+    
+stages:
+  - template: './templates/template-terraform-stages.yml'
+    parameters: 
+      environmentName: 'sandbox'
+      serviceconnectionName: 'VuosikelloDevOpsSandbox'
+      terraformBasePath: '$(System.DefaultWorkingDirectory)/Terraform'
+
+  # Huomaa: template sisältää jo julkaisuvaiheen, joten käytetään vain sitä
+  # Syklinen muuttujaviittaus on korjattu poistamalla toinen julkaisuvaihe
+  # Tarvittavien muuttujien pitäisi tulla VuosikelloVariables-ryhmästä

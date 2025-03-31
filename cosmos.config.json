@@ -1,0 +1,14 @@
+{
+    "databaseName": "vuosikellodb",
+    "containers": {
+        "projects": {
+            "name": "projects",
+            "partitionKey": "/id"
+        },
+        "events": {
+            "name": "events",
+            "partitionKey": "/id"
+        }
+    },
+    "connectionString": "REPLACE_WITH_YOUR_CONNECTION_STRING"
+} 

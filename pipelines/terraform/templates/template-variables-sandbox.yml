@@ -1,0 +1,6 @@
+variables:
+
+- name: 'TF_BACKEND_SA_NAME'
+  value: 'sa01a132827b4e10sandbox' # Replace with the name of the storage account
+
+
