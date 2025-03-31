@@ -103,12 +103,13 @@ stages:
             downloadPath: '$(System.ArtifactsDirectory)'
 
         - task: ExtractFiles@1
-          displayName: 'Extract files '
+          displayName: 'Extract files'
           inputs:
             archiveFilePatterns: '$(System.ArtifactsDirectory)/$(Build.BuildId)-tfplan/terraform-plan.tgz'
-            destinationFolder: '$(Build.SourcesDirectory)'
+            destinationFolder: '$(terraformBasePath)'
             cleanDestinationFolder: false
-
+            overwriteExistingFiles: true
+            
         - task: TerraformInstaller@1
           displayName: 'Install Terraform $(TF_VERSION)'
           inputs:

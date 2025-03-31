@@ -5,7 +5,7 @@ pool:
   vmImage: windows-latest
 
 variables:
-  - group: VuosikelloVariables  # Sisältää STATIC_WEB_APP_TOKEN_SANDBOX
+  - group: VuosikelloVariables  # Sisältää WEB_APP_NAME ja muut muuttujat
     
 stages:
   - template: './templates/template-terraform-stages.yml'
