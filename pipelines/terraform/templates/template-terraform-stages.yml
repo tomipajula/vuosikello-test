@@ -165,6 +165,66 @@ stages:
             targetType: 'inline'
             script: 'CI=false npm run build'
             workingDirectory: '$(System.DefaultWorkingDirectory)'
+            
+        - task: CopyFiles@2
+          displayName: 'Copy web.config to build folder'
+          inputs:
+            SourceFolder: '$(System.DefaultWorkingDirectory)'
+            Contents: 'web.config'
+            TargetFolder: '$(System.DefaultWorkingDirectory)/build'
+
+        - task: Bash@3
+          displayName: 'Create deployment package'
+          inputs:
+            targetType: 'inline'
+            script: |
+              echo "Creating package.json for deployment"
+              cat > "$(System.DefaultWorkingDirectory)/build/package.json" << EOF
+              {
+                "name": "vuosikello",
+                "version": "1.0.0",
+                "scripts": {
+                  "start": "node server.js"
+                },
+                "engines": {
+                  "node": "18.x"
+                }
+              }
+              EOF
+              
+              echo "Creating simple server.js for hosting static files"
+              cat > "$(System.DefaultWorkingDirectory)/build/server.js" << EOF
+              const express = require('express');
+              const path = require('path');
+              const app = express();
+              const PORT = process.env.PORT || 8080;
+              
+              // Serve static files
+              app.use(express.static(path.join(__dirname)));
+              
+              // Fallback to index.html for SPA routing
+              app.get('*', (req, res) => {
+                res.sendFile(path.join(__dirname, 'index.html'));
+              });
+              
+              app.listen(PORT, () => {
+                console.log(\`Server is running on port \${PORT}\`);
+              });
+              EOF
+            workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+        - task: AzureCLI@2
+          displayName: 'Configure Web App settings'
+          inputs:
+            azureSubscription: '${{ parameters.serviceconnectionName }}'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              # Asetetaan käynnistyskomento
+              az webapp config set --name $(WEB_APP_NAME) --resource-group $(TF_BACKEND_RG_NAME) --startup-file="pm2 serve /home/site/wwwroot --spa --no-daemon"
+              
+              # Varmistetaan, että Node.js versio on oikea
+              az webapp config appsettings set --name $(WEB_APP_NAME) --resource-group $(TF_BACKEND_RG_NAME) --settings WEBSITE_NODE_DEFAULT_VERSION="~18" SCM_DO_BUILD_DURING_DEPLOYMENT=true
 
         - task: AzureWebApp@1
           displayName: 'Deploy Web App'
@@ -175,4 +235,5 @@ stages:
             resourceGroupName: '$(TF_BACKEND_RG_NAME)'
             package: '$(System.DefaultWorkingDirectory)/build'
             runtimeStack: 'NODE|18-lts'
+            startUpCommand: 'pm2 serve /home/site/wwwroot --spa --no-daemon'
             deploymentMethod: 'auto'
