@@ -3,12 +3,12 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { initializeCosmosDb } from './services/cosmosDbService';
+import jp from './services/cosmosDbService';
 
 // Alustetaan Cosmos DB -yhteys
 (async () => {
   try {
-    await initializeCosmosDb();
+    await jp.initializeCosmosDb();
     console.log("Cosmos DB -yhteys alustettu onnistuneesti");
   } catch (error) {
     console.error("Virhe Cosmos DB:n alustuksessa:", error);

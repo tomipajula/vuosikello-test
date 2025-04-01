@@ -6,17 +6,12 @@
  */
 
 import { send as sendEmail } from './emailService';
-import { 
-  getReminders as getRemindersFromDb,
-  saveReminders as saveRemindersToDb,
-  addReminder as addReminderToDb,
-  deleteReminder as deleteReminderFromDb
-} from './cosmosDbService';
+import jp from './cosmosDbService';
 
 // Hakee muistutukset tietokannasta
 const getReminders = async () => {
   try {
-    return await getRemindersFromDb();
+    return await jp.getReminders();
   } catch (error) {
     console.error("Virhe muistutusten haussa:", error);
     return [];
@@ -26,7 +21,7 @@ const getReminders = async () => {
 // Tallentaa muistutukset tietokantaan
 const saveReminders = async (reminders) => {
   try {
-    return await saveRemindersToDb(reminders);
+    return await jp.saveReminders(reminders);
   } catch (error) {
     console.error("Virhe muistutusten tallennuksessa:", error);
     return reminders; // Palautetaan alkuperäiset muistutukset virheen sattuessa
@@ -41,7 +36,7 @@ const addReminder = async (reminder) => {
       reminder.id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
     }
     
-    return await addReminderToDb(reminder);
+    return await jp.addReminder(reminder);
   } catch (error) {
     console.error("Virhe muistutuksen lisäyksessä:", error);
     return reminder; // Palautetaan alkuperäinen muistutus virheen sattuessa
@@ -55,7 +50,7 @@ const deleteReminder = async (eventId) => {
     const reminder = reminders.find(r => r.eventId === eventId);
     
     if (reminder) {
-      await deleteReminderFromDb(reminder.id, eventId);
+      await jp.deleteReminder(reminder.id, eventId);
     }
   } catch (error) {
     console.error(`Virhe muistutuksen poistossa (eventId: ${eventId}):`, error);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ProjectForm from './ProjectForm';
-import { getProjects, saveProjects } from '../services/cosmosDbService';
+import jp from '../services/cosmosDbService';
 
 /**
  * ProjectSelector-komponentti
@@ -26,7 +26,7 @@ const ProjectSelector = ({ onSelectProject }) => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
-        let projects = await getProjects();
+        let projects = await jp.getProjects();
         
         // Jos projekteja ei löydy, luodaan oletusprojektit
         if (projects.length === 0) {
@@ -39,7 +39,7 @@ const ProjectSelector = ({ onSelectProject }) => {
           ];
           
           // Tallennetaan oletusprojektit tietokantaan
-          projects = await saveProjects(defaultProjects);
+          projects = await jp.saveProjects(defaultProjects);
         }
         
         setProjects(projects);
@@ -67,7 +67,7 @@ const ProjectSelector = ({ onSelectProject }) => {
   const handleSaveProject = async (newProject) => {
     try {
       // Tallenna uusi projekti
-      const savedProjects = await saveProjects([...projects, newProject]);
+      const savedProjects = await jp.saveProjects([...projects, newProject]);
       
       // Päivitä projektilistaus
       setProjects(savedProjects);

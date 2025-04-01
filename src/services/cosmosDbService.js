@@ -41,4 +41,104 @@ async function initializeCosmosDB() {
   }
 }
 
-// Muut funktiot tässä... 
+// Hakee projektit tietokannasta
+async function getProjects() {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("projects");
+    const { resources } = await container.items.readAll().fetchAll();
+    return resources;
+  } catch (error) {
+    console.error("Virhe projektien haussa:", error);
+    throw error;
+  }
+}
+
+// Tallentaa projektit tietokantaan
+async function saveProjects(projects) {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("projects");
+    
+    // Tallennetaan jokainen projekti
+    const savedProjects = [];
+    for (const project of projects) {
+      const { resource } = await container.items.upsert(project);
+      savedProjects.push(resource);
+    }
+    
+    return savedProjects;
+  } catch (error) {
+    console.error("Virhe projektien tallennuksessa:", error);
+    throw error;
+  }
+}
+
+// Hakee muistutukset tietokannasta
+async function getReminders() {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("reminders");
+    const { resources } = await container.items.readAll().fetchAll();
+    return resources;
+  } catch (error) {
+    console.error("Virhe muistutusten haussa:", error);
+    throw error;
+  }
+}
+
+// Tallentaa muistutukset tietokantaan
+async function saveReminders(reminders) {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("reminders");
+    
+    // Tallennetaan jokainen muistutus
+    const savedReminders = [];
+    for (const reminder of reminders) {
+      const { resource } = await container.items.upsert(reminder);
+      savedReminders.push(resource);
+    }
+    
+    return savedReminders;
+  } catch (error) {
+    console.error("Virhe muistutusten tallennuksessa:", error);
+    throw error;
+  }
+}
+
+// Lisää uuden muistutuksen
+async function addReminder(reminder) {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("reminders");
+    const { resource } = await container.items.create(reminder);
+    return resource;
+  } catch (error) {
+    console.error("Virhe muistutuksen lisäyksessä:", error);
+    throw error;
+  }
+}
+
+// Poistaa muistutuksen
+async function deleteReminder(id, eventId) {
+  try {
+    const database = client.database(databaseId);
+    const container = database.container("reminders");
+    await container.item(id, eventId).delete();
+  } catch (error) {
+    console.error("Virhe muistutuksen poistossa:", error);
+    throw error;
+  }
+}
+
+// Vientimäärittelyt
+module.exports = {
+  initializeCosmosDb: initializeCosmosDB,
+  getProjects,
+  saveProjects,
+  getReminders,
+  saveReminders,
+  addReminder,
+  deleteReminder
+}; 
