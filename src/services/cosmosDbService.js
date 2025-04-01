@@ -1,6 +1,6 @@
 // Cosmos DB:n yhteysmääritykset
 const endpoint = "https://vuosikello-db.documents.azure.com:443/";
-const key = process.env.COSMOS_DB_KEY || "placeholder-key";
+const key = process.env.REACT_APP_COSMOS_DB_KEY || "";
 const databaseId = "vuosikello-db";
 
 // Containerien konfigurointi
@@ -11,9 +11,37 @@ const containers = [
   { id: "reminders", partitionKey: "/eventId" }
 ];
 
-const { CosmosClient } = require("@azure/cosmos");
+// Tarkistetaan ollaanko selainympäristössä
+const isBrowser = typeof window !== 'undefined';
 
-const client = new CosmosClient({ endpoint, key });
+// Mock-data paikalliseen käyttöön selaimessa
+let localData = {
+  projects: [],
+  events: [],
+  categories: [],
+  reminders: []
+};
+
+// Haetaan mahdollisesti jo tallennettu data local storagesta
+if (isBrowser) {
+  try {
+    const savedData = localStorage.getItem('vuosikelloData');
+    if (savedData) {
+      localData = JSON.parse(savedData);
+    }
+  } catch (error) {
+    console.warn("Local storage ei ole käytettävissä:", error);
+  }
+}
+
+// Jos ollaan selaimessa ja avainta ei ole määritelty, käytetään mock-toteutuksia
+const isCosmosAvailable = !isBrowser || (key && key.length > 0);
+
+let client;
+if (isCosmosAvailable) {
+  const { CosmosClient } = require("@azure/cosmos");
+  client = new CosmosClient({ endpoint, key });
+}
 
 /**
  * Alustaa Cosmos DB:n luomalla tietokannan ja containerit jos niitä ei ole olemassa
@@ -22,6 +50,25 @@ const client = new CosmosClient({ endpoint, key });
 async function initializeCosmosDB() {
   try {
     console.log("Alustetaan Cosmos DB...");
+    
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      console.log("Cosmos DB ei ole käytettävissä, käytetään paikallista tallennusta.");
+      // Varmistetaan että oletusdataa on olemassa
+      if (localData.projects.length === 0) {
+        localData.projects = [
+          { id: "1", name: "Markkinointiprojekti 2025", description: "Markkinoinnin vuosisuunnitelma ja tapahtumat" },
+          { id: "2", name: "Tuotekehitys Q1-Q2/2025", description: "Tuotekehityksen aikataulu ja virstanpylväät" },
+          { id: "3", name: "Henkilöstöhallinto 2025", description: "HR-tapahtumat ja koulutukset" },
+          { id: "4", name: "Myyntistrategia 2025", description: "Myynnin tapahtumat ja tavoitteet" },
+          { id: "5", name: "IT-infrastruktuuri 2025", description: "IT-järjestelmien päivitykset ja huollot" }
+        ];
+        saveToLocalStorage();
+      }
+      return;
+    }
+
+    // Cosmos DB -toteutus
     const { database } = await client.databases.createIfNotExists({ id: databaseId });
     console.log(`Tietokanta '${databaseId}' varmistettu`);
 
@@ -41,9 +88,26 @@ async function initializeCosmosDB() {
   }
 }
 
+// Tallentaa datan local storageen
+function saveToLocalStorage() {
+  if (isBrowser) {
+    try {
+      localStorage.setItem('vuosikelloData', JSON.stringify(localData));
+    } catch (error) {
+      console.warn("Virhe tallennettaessa local storageen:", error);
+    }
+  }
+}
+
 // Hakee projektit tietokannasta
 async function getProjects() {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      return localData.projects;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("projects");
     const { resources } = await container.items.readAll().fetchAll();
@@ -57,6 +121,14 @@ async function getProjects() {
 // Tallentaa projektit tietokantaan
 async function saveProjects(projects) {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      localData.projects = projects;
+      saveToLocalStorage();
+      return projects;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("projects");
     
@@ -77,6 +149,12 @@ async function saveProjects(projects) {
 // Hakee muistutukset tietokannasta
 async function getReminders() {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      return localData.reminders;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("reminders");
     const { resources } = await container.items.readAll().fetchAll();
@@ -90,6 +168,14 @@ async function getReminders() {
 // Tallentaa muistutukset tietokantaan
 async function saveReminders(reminders) {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      localData.reminders = reminders;
+      saveToLocalStorage();
+      return reminders;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("reminders");
     
@@ -110,6 +196,14 @@ async function saveReminders(reminders) {
 // Lisää uuden muistutuksen
 async function addReminder(reminder) {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      localData.reminders.push(reminder);
+      saveToLocalStorage();
+      return reminder;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("reminders");
     const { resource } = await container.items.create(reminder);
@@ -123,6 +217,14 @@ async function addReminder(reminder) {
 // Poistaa muistutuksen
 async function deleteReminder(id, eventId) {
   try {
+    // Jos Cosmos DB ei ole käytettävissä, käytetään paikallista toteutusta
+    if (!isCosmosAvailable) {
+      localData.reminders = localData.reminders.filter(r => r.id !== id || r.eventId !== eventId);
+      saveToLocalStorage();
+      return;
+    }
+
+    // Cosmos DB -toteutus
     const database = client.database(databaseId);
     const container = database.container("reminders");
     await container.item(id, eventId).delete();
